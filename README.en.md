@@ -12,6 +12,12 @@ Lightframe replaces the traditional launcher page with a lightweight menu over t
 
 On-device capture: the HOME app switcher and settings appear over the video.
 
+## YouTube client update
+
+[TizenTube Cobalt](https://github.com/reisxd/TizenTubeCobalt) has been tried on the TV. The user reported normal playback and no ads during this trial. Integration is in progress so the YouTube entry, automatic opening and foreground-app recognition use this client consistently. The official YouTube app is retained as a fallback.
+
+This integration is **not included in the published v0.1.0 release** yet. The trial does not establish ad-free playback for every video. This section and the release notes will be updated after integration and installation are confirmed.
+
 ## What it does
 
 - **No separate home screen:** stay centred on the current app instead of navigating a desktop.
