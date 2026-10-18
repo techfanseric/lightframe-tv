@@ -27,10 +27,6 @@ final class LauncherOverlay {
     private NetworkReadyGate networkGate;
     private boolean automaticLaunch;
     private StatusStripView statusStrip;
-    private AdMuteClient adMute;
-    private AdMuteClient.State adMuteState;
-    private TextView adMuteValue;
-    private boolean adMuteBusy,adMuteSaving;
     private int foreground=-1;
     private boolean screenOn=true,closed;
     private AlertDialog dialog;
@@ -51,7 +47,7 @@ final class LauncherOverlay {
         screenOn=Intent.ACTION_SCREEN_ON.equals(i.getAction());handler.removeCallbacks(poll);
         if(screenOn){showChip();poll.run();if(!networkGate.isWaiting())boot();}else{hidePanel();removeChip();if(networkGate!=null)networkGate.cancel();hideNetworkCard();automaticLaunch=false;}
     }};
-    LauncherOverlay(Service s){service=s;adMute=new AdMuteClient(s);adMuteState=adMute.state();recents=new RecentApps(s);android.content.SharedPreferences initial=LauncherSupport.preferences(s);if(!initial.contains("native_status_mode"))initial.edit().putString("native_status_mode","smart").apply();if(!initial.getBoolean("follow_last_default_v1",false))initial.edit().putBoolean("follow_last_default_v1",true).putString("native_default_app","last").apply();String last=LauncherSupport.preferences(s).getString("last_native_app","");if(!last.isEmpty()){foreground=AppCatalog.index(last);if(!initial.contains("last_video_app"))initial.edit().putString("last_video_app",last).apply();}wm=(WindowManager)s.getSystemService(Context.WINDOW_SERVICE);screenOn=((PowerManager)s.getSystemService(Context.POWER_SERVICE)).isInteractive();
+    LauncherOverlay(Service s){service=s;recents=new RecentApps(s);android.content.SharedPreferences initial=LauncherSupport.preferences(s);if(!initial.contains("native_status_mode"))initial.edit().putString("native_status_mode","smart").apply();if(!initial.getBoolean("follow_last_default_v1",false))initial.edit().putBoolean("follow_last_default_v1",true).putString("native_default_app","last").apply();String last=LauncherSupport.preferences(s).getString("last_native_app","");if(!last.isEmpty()){foreground=AppCatalog.index(last);if(!initial.contains("last_video_app"))initial.edit().putString("last_video_app",last).apply();}wm=(WindowManager)s.getSystemService(Context.WINDOW_SERVICE);screenOn=((PowerManager)s.getSystemService(Context.POWER_SERVICE)).isInteractive();
         usageWorker.execute(()->{long[] history=recents.readHistoricalUse();handler.post(()->{if(!closed)for(int i=0;i<history.length;i++)recents.record(i,history[i]);});});
         networkGate=new NetworkReadyGate(s,new NetworkReadyGate.Listener(){
             public void waiting(String value){showNetworkCard(value);showChip();}
@@ -170,20 +166,8 @@ final class LauncherOverlay {
         }};
         root.setOrientation(1);root.setPadding(dp(32),dp(28),dp(32),dp(28));
         root.setBackground(new MenuBackdropDrawable());
-        final boolean youtube=foreground==0;
-        LinearLayout muteTile=null;
-        if(youtube){
-            LinearLayout muteRow=new LinearLayout(service);muteRow.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);
-            muteTile=menuTile();muteTile.setOrientation(LinearLayout.HORIZONTAL);muteTile.setPadding(dp(8),dp(6),dp(8),dp(6));
-            ImageView icon=new ImageView(service);icon.setImageResource(R.drawable.lucide_volume_x);muteTile.addView(icon,new LinearLayout.LayoutParams(dp(18),dp(18)));
-            LinearLayout words=new LinearLayout(service);words.setOrientation(1);words.setGravity(Gravity.CENTER_VERTICAL);
-            LinearLayout.LayoutParams textLayout=new LinearLayout.LayoutParams(0,-1,1);textLayout.leftMargin=dp(7);muteTile.addView(words,textLayout);
-            words.addView(menuText("关闭广告声音",12,Color.WHITE));adMuteValue=menuText("读取中…",10,0xffe3e6ea);words.addView(adMuteValue);
-            muteTile.setOnClickListener(v->requestAdMute(true));muteRow.addView(muteTile,new LinearLayout.LayoutParams(dp(300),-1));
-            root.addView(muteRow,new LinearLayout.LayoutParams(-1,dp(62)));
-        }
         LinearLayout apps=new LinearLayout(service);apps.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams appRow=new LinearLayout.LayoutParams(-1,dp(70));if(youtube)appRow.topMargin=dp(8);root.addView(apps,appRow);
+        LinearLayout.LayoutParams appRow=new LinearLayout.LayoutParams(-1,dp(70));root.addView(apps,appRow);
         LinearLayout options=new LinearLayout(service);options.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams optionRow=new LinearLayout.LayoutParams(-1,dp(62));optionRow.topMargin=dp(8);root.addView(options,optionRow);
         int[] order=recents.order(foreground);
@@ -216,38 +200,19 @@ final class LauncherOverlay {
         updateSettingValues(values);settingsFirst=settingTiles[0];
         for(int i=0;i<appTiles.length;i++){
             appTiles[i].setNextFocusLeftId(appTiles[(i+appTiles.length-1)%appTiles.length].getId());appTiles[i].setNextFocusRightId(appTiles[(i+1)%appTiles.length].getId());
-            appTiles[i].setNextFocusDownId(settingTiles[0].getId());appTiles[i].setNextFocusUpId(muteTile==null?appTiles[i].getId():muteTile.getId());
+            appTiles[i].setNextFocusDownId(settingTiles[0].getId());appTiles[i].setNextFocusUpId(appTiles[i].getId());
         }
         for(int i=0;i<settingTiles.length;i++){
             settingTiles[i].setNextFocusLeftId(settingTiles[(i+5)%6].getId());settingTiles[i].setNextFocusRightId(settingTiles[(i+1)%6].getId());
             settingTiles[i].setNextFocusUpId(appTiles[0].getId());settingTiles[i].setNextFocusDownId(settingTiles[i].getId());
         }
-        if(muteTile!=null){
-            muteTile.setNextFocusDownId(appTiles[0].getId());muteTile.setNextFocusUpId(muteTile.getId());
-            muteTile.setNextFocusLeftId(muteTile.getId());muteTile.setNextFocusRightId(muteTile.getId());
-        }
-        panel=root;WindowManager.LayoutParams p=params(dp(644),dp(youtube?266:196),true);p.gravity=Gravity.LEFT|Gravity.CENTER_VERTICAL;p.x=0;p.y=0;
+        panel=root;WindowManager.LayoutParams p=params(dp(644),dp(196),true);p.gravity=Gravity.LEFT|Gravity.CENTER_VERTICAL;p.x=0;p.y=0;
         // Keep the rest of the picture at its original brightness.
         p.flags&=~WindowManager.LayoutParams.FLAG_DIM_BEHIND;p.dimAmount=0;
         try{
             wm.addView(panel,p);if(openSettingsRow){settingsFirst.requestFocus();openSettingsRow=false;}else appTiles[0].requestFocus();handler.postDelayed(dismiss,15000);
-            android.util.Log.i("HomeOverlay","menu shown current="+foreground+" first="+order[0]+" adMuteRow="+youtube);
-            if(youtube)requestAdMute(false);
-        }catch(RuntimeException e){panel=null;settingsFirst=null;adMuteValue=null;android.util.Log.w("HomeOverlay","show failed "+e.getClass().getSimpleName());}
-    }
-    private void requestAdMute(boolean toggle){
-        if(adMuteBusy){renderAdMute();return;}
-        adMuteBusy=true;adMuteSaving=toggle&&adMuteState.available;renderAdMute();
-        AdMuteClient.Callback reply=state->{adMuteState=state;adMuteBusy=false;adMuteSaving=false;renderAdMute();};
-        if(adMuteSaving)adMute.write(!adMuteState.enabled,reply);else adMute.read(reply);
-    }
-    private void renderAdMute(){
-        if(adMuteValue==null)return;
-        String value=adMuteState.known?(adMuteState.enabled?"开启":"关闭"):"";
-        if(adMuteBusy)value+=(value.isEmpty()?"":" · ")+(adMuteSaving?"正在保存…":"读取中…");
-        else if(!adMuteState.available)value+=(value.isEmpty()?"":" · ")+"不可用，按确认重试";
-        else if(!adMuteState.connected||!adMuteState.applied)value+=" · 待 YouTube 连接";
-        adMuteValue.setText(value);
+            android.util.Log.i("HomeOverlay","menu shown current="+foreground+" first="+order[0]);
+        }catch(RuntimeException e){panel=null;settingsFirst=null;android.util.Log.w("HomeOverlay","show failed "+e.getClass().getSimpleName());}
     }
     private GradientDrawable glass(boolean focused){
         GradientDrawable surface=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
@@ -277,7 +242,7 @@ final class LauncherOverlay {
         else if(setting==5){hidePanel();service.startActivity(new Intent().setComponent(new ComponentName("com.xiaomi.mitv.settings","com.xiaomi.mitv.settings.entry.MainActivity")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));}
         if(panel!=null)updateSettingValues(values);
     }
-    private void hidePanel(){panelRequest++;menuLoading=false;openSettingsRow=false;handler.removeCallbacks(dismiss);if(panel!=null){try{wm.removeView(panel);}catch(RuntimeException ignored){}panel=null;settingsFirst=null;adMuteValue=null;}}
+    private void hidePanel(){panelRequest++;menuLoading=false;openSettingsRow=false;handler.removeCallbacks(dismiss);if(panel!=null){try{wm.removeView(panel);}catch(RuntimeException ignored){}panel=null;settingsFirst=null;}}
     private void showNetworkCard(String message){
         if(networkCard!=null){networkLabel.setText(message);networkHint.setText(networkGate.isWaiting()?"网络就绪后自动打开 · 首页键可选择其他应用":"首页键选择应用或重试");return;}
         LinearLayout box=new LinearLayout(service);box.setOrientation(1);box.setPadding(dp(24),dp(18),dp(24),dp(18));box.setBackground(shape(0xf014171d,0xff42464e,14));
@@ -294,5 +259,5 @@ final class LauncherOverlay {
     private TextView text(String value,int size,int color){TextView t=new TextView(service);t.setText(value);t.setTextSize(size);t.setTextColor(color);t.setTypeface(Typeface.create("sans-serif-medium",0));return t;}
     private GradientDrawable shape(int fill,int border,int radius){GradientDrawable d=new GradientDrawable();d.setColor(fill);d.setCornerRadius(dp(radius));d.setStroke(dp(1),border);return d;}
     private int dp(int n){return Math.round(n*service.getResources().getDisplayMetrics().density);}
-    void close(){closed=true;if(adMute!=null)adMute.close();if(networkGate!=null)networkGate.close();hideNetworkCard();handler.removeCallbacksAndMessages(null);hidePanel();removeChip();if(dialog!=null)dialog.dismiss();dashboard.close();usageWorker.shutdownNow();try{service.unregisterReceiver(screen);}catch(RuntimeException ignored){}}
+    void close(){closed=true;if(networkGate!=null)networkGate.close();hideNetworkCard();handler.removeCallbacksAndMessages(null);hidePanel();removeChip();if(dialog!=null)dialog.dismiss();dashboard.close();usageWorker.shutdownNow();try{service.unregisterReceiver(screen);}catch(RuntimeException ignored){}}
 }
