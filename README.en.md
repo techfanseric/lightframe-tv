@@ -10,13 +10,15 @@ Lightframe replaces the traditional launcher page with a lightweight menu over t
 
 ![Lightframe TV app switcher over the current video](docs/images/launcher-menu.png)
 
-On-device capture: the HOME app switcher and settings appear over the video.
+On-device capture of an earlier version: the HOME app switcher and settings appear over the video. v0.1.1 removes the ad-audio row shown at the top, leaving the app and settings rows.
 
-## YouTube client update
+## YouTube client
 
-[TizenTube Cobalt](https://github.com/reisxd/TizenTubeCobalt) has been tried on the TV. The user reported normal playback and no ads during this trial. Integration is in progress so the YouTube entry, automatic opening and foreground-app recognition use this client consistently. The official YouTube app is retained as a fallback.
+Starting with **v0.1.1**, Lightframe consistently uses [TizenTube Cobalt](https://github.com/reisxd/TizenTubeCobalt) for its YouTube entry, app switching, chosen startup app, last-used-app opening and foreground recognition. The menu label remains “YouTube”.
 
-This integration is **not included in the published v0.1.0 release** yet. The trial does not establish ad-free playback for every video. This section and the release notes will be updated after integration and installation are confirmed.
+Install TizenTube Cobalt separately (currently validated version: 2.0.3). The official YouTube app may remain installed for manual fallback; Lightframe does not switch back to it automatically. The user reported normal playback and no ads during this trial, which does not establish ad-free playback for every video.
+
+The current menu has **two rows: apps and settings**. The ad-audio row and its menu network calls have been removed. Overlay updates restore the background service without opening the menu or switching the video. HOME interaction and boot restoration remain for user validation when convenient.
 
 ## What it does
 
@@ -28,7 +30,6 @@ This integration is **not included in the published v0.1.0 release** yet. The tr
 - **Smart visibility by default:** hide the status strip in Bilibili and restore it elsewhere. Always-on and always-off remain available and are remembered.
 - **Direct settings:** input source, startup app, automatic startup, status strip, FlClash and system settings are immediately visible in one row.
 - **Restrained presentation:** left-aligned icons and labels, a continuous translucent scrim, and one focused container instead of many cards.
-- **Optional ad-audio control:** a YouTube-only “Mute ad audio” row, off by default. Initial focus stays on the app row. It controls a separately configured helper without disabling automatic skipping.
 - **Native input integration:** source selection and HDMI hotplug switching on the verified Xiaomi firmware.
 
 Proxy startup requires an already configured FlClash installation, subscription and system VPN permission. No proxy service, video apps or member accounts are bundled.
@@ -51,7 +52,7 @@ Outputs: `dist/LightframeHome.apk` and `dist/LightframeOverlay.apk`. Both packag
 
 Installation grants overlay and usage access. `--set-home` selects the default HOME component; omit it to only install and grant access. The script does not reboot, clear data or disable the stock launcher. Press HOME yourself when ready.
 
-Video apps, accounts, VPN configuration and subscriptions are not bundled. See [integration setup](docs/integrations.md) for the local Clash controller and optional ad-mute helper.
+Video apps, accounts, VPN configuration and subscriptions are not bundled. See [integration setup](docs/integrations.md) for the local Clash controller. TizenTube Cobalt is installed separately.
 
 ## Architecture and limitations
 
