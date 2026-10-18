@@ -2,19 +2,30 @@
 
 [中文](README.md)
 
-A lightweight Android TV launcher built around the remote and the programme you are watching. Press HOME to switch apps or adjust a setting, then return to the video.
+**No home screen. Boot straight into the app you want to watch.**
 
-<!-- SCREENSHOT: awaiting a valid capture of the current video with the HOME menu open. -->
+[Download the latest release](https://github.com/techfanseric/lightframe-tv/releases/latest)
 
-## Features
+Lightframe replaces the traditional launcher page with a lightweight menu over the current video. Press HOME, pick another app, and switch directly without visiting a separate desktop.
 
-- A left-aligned, vertically centred translucent menu; only the focused item has a background.
-- Recent-app ordering, current-app exclusion, and wrapping horizontal navigation for YouTube, Bilibili and Netflix.
-- Direct settings for input source, startup app, automatic startup, status bar, FlClash and system settings.
-- Startup defaults to the last video app; network readiness gates YouTube / Netflix automatic opening.
-- A small Clash status strip with node, latency, rates and a traffic graph. **Smart** mode is the default: hidden in Bilibili and restored elsewhere. Always-on and always-off modes remain available.
-- A YouTube-only “Mute ad audio” row, off by default. Initial focus remains on the app row; UP reaches the switch. This controls a separately configured LAN helper and does not disable automatic skipping.
-- Firmware-specific HDMI hotplug and source switching.
+<!-- SCREENSHOT: current video with the HOME app-switcher open; awaiting a valid capture. -->
+
+## What it does
+
+- **No separate home screen:** stay centred on the current app instead of navigating a desktop.
+- **Boot directly into an app:** choose YouTube, Bilibili or Netflix, or follow the last-used app (the default). Automatic opening can be disabled independently.
+- **Switch straight from the video:** HOME opens the switcher, excludes the current app and selects the previous app. Left/right wraps; up/down changes rows.
+- **Detect and start the network proxy:** check the configured FlClash VPN and request startup when disconnected. YouTube / Netflix opening waits for controller and target-network readiness; Bilibili opens directly.
+- **Network status at a glance:** a small top strip shows proxy node, latency, upload/download rates and a traffic graph.
+- **Smart visibility by default:** hide the status strip in Bilibili and restore it elsewhere. Always-on and always-off remain available and are remembered.
+- **Direct settings:** input source, startup app, automatic startup, status strip, FlClash and system settings are immediately visible in one row.
+- **Restrained presentation:** left-aligned icons and labels, a continuous translucent scrim, and one focused container instead of many cards.
+- **Optional ad-audio control:** a YouTube-only “Mute ad audio” row, off by default. Initial focus stays on the app row. It controls a separately configured helper without disabling automatic skipping.
+- **Native input integration:** source selection and HDMI hotplug switching on the verified Xiaomi firmware.
+
+Proxy startup requires an already configured FlClash installation, subscription and system VPN permission. No proxy service, video apps or member accounts are bundled.
+
+Download **LightframeHome.apk** and **LightframeOverlay.apk** together from [Releases](https://github.com/techfanseric/lightframe-tv/releases/latest). The HOME relay and overlay are separate packages and must both be installed. Release APKs do not require an SDK to use.
 
 ## Build and install
 
