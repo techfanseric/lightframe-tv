@@ -175,7 +175,7 @@ final class LauncherOverlay {
         for(int position=0;position<order.length;position++){
             final int app=order[position];
             LinearLayout tile=menuTile();tile.setOrientation(LinearLayout.HORIZONTAL);tile.setPadding(dp(12),dp(6),dp(12),dp(6));
-            ImageView icon=new ImageView(service);try{icon.setImageDrawable(service.getPackageManager().getApplicationIcon(AppCatalog.packageName(service,app)));}catch(Exception ignored){icon.setImageResource(R.drawable.lucide_app_window);}
+            ImageView icon=new ImageView(service);if(app==0){icon.setImageResource(R.drawable.tizentube_icon);}else try{icon.setImageDrawable(service.getPackageManager().getApplicationIcon(AppCatalog.packageName(service,app)));}catch(Exception ignored){icon.setImageResource(R.drawable.lucide_app_window);}
             tile.addView(icon,new LinearLayout.LayoutParams(dp(32),dp(32)));
             LinearLayout words=new LinearLayout(service);words.setOrientation(1);words.setGravity(Gravity.CENTER_VERTICAL);
             LinearLayout.LayoutParams wordLayout=new LinearLayout.LayoutParams(0,-1,1);wordLayout.leftMargin=dp(10);tile.addView(words,wordLayout);

@@ -14,7 +14,7 @@ On-device capture of an earlier version: the HOME app switcher and settings appe
 
 ## YouTube client
 
-Starting with **v0.1.1**, Lightframe consistently uses [TizenTube Cobalt](https://github.com/reisxd/TizenTubeCobalt) for its YouTube entry, app switching, chosen startup app, last-used-app opening and foreground recognition. The menu label remains “YouTube”.
+Starting with **v0.1.1**, Lightframe consistently uses [TizenTube Cobalt](https://github.com/reisxd/TizenTubeCobalt) for its YouTube entry, app switching, chosen startup app, last-used-app opening and foreground recognition. The menu and startup settings display “TizenTube”. Its app tile uses a distinct teal T mark to avoid confusion with the official YouTube client.
 
 Install TizenTube Cobalt separately (currently validated version: 2.0.3). The official YouTube app may remain installed for manual fallback; Lightframe does not switch back to it automatically. The user reported normal playback and no ads during this trial, which does not establish ad-free playback for every video.
 

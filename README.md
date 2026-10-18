@@ -14,7 +14,7 @@
 
 ## YouTube 客户端
 
-从 **v0.1.1** 起，轻幕中的 YouTube 统一使用 [TizenTube Cobalt](https://github.com/reisxd/TizenTubeCobalt)：应用切换、开机指定应用、跟随上次启动和当前应用识别都指向同一个客户端。菜单仍显示熟悉的“YouTube”名称。
+从 **v0.1.1** 起，轻幕中的 YouTube 统一使用 [TizenTube Cobalt](https://github.com/reisxd/TizenTubeCobalt)：应用切换、开机指定应用、跟随上次启动和当前应用识别都指向同一个客户端。菜单与开机设置显示“TizenTube”，应用入口使用独立的青绿色 T 标识，避免与官方 YouTube 混淆。
 
 请另行安装 TizenTube Cobalt（当前验证版本为 2.0.3）。原官方 YouTube 可保留作手动回退，轻幕不会自动切回官方客户端。用户本次试用确认播放体验正常、未见广告；这不代表对所有视频都保证无广告。
 
