@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.3
+
+- Add subtle 0.45dp outer outlines at 40% black opacity to status text and network/traffic icons, preserving white stroke thickness.
+- Increase graph history from 40 to 80 samples with fixed spacing and right-aligned accumulation; retain the five-second sampling interval (about 6.5 minutes of history).
+- Refine graph height to balance the original range with the visible rate-digit height.
+- Ship Overlay 8.16 (25) with unchanged Home 8.3 (11), using the existing shared signing key.
+- Build/signature checks passed; visual adjustments were reviewed by the user on the TV through background updates.
+
 ## 0.1.2
 
 - Display TizenTube in both app catalogs, covering the menu, startup settings and status messages.

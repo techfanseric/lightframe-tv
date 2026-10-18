@@ -5,6 +5,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.view.View;
@@ -12,10 +13,12 @@ import java.util.Locale;
 
 /** Transparent, non-interactive status line. Redraws only on real controller samples. */
 final class StatusStripView extends View {
-    private static final int HISTORY = 40;
+    private static final int HISTORY = 80;
     private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint textOutline;
     private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
+    private final Rect digitBounds = new Rect();
     private final long[] upload = new long[HISTORY], download = new long[HISTORY];
     private final float density;
     private int count;
@@ -26,18 +29,26 @@ final class StatusStripView extends View {
     StatusStripView(Context context) {
         super(context);
         density = getResources().getDisplayMetrics().density;
-        networkIcon = context.getDrawable(R.drawable.lucide_network);
-        downIcon = context.getDrawable(R.drawable.lucide_arrow_down);
-        upIcon = context.getDrawable(R.drawable.lucide_arrow_up);
+        networkIcon = context.getDrawable(R.drawable.status_network);
+        downIcon = context.getDrawable(R.drawable.status_arrow_down);
+        upIcon = context.getDrawable(R.drawable.status_arrow_up);
         text.setColor(Color.WHITE);
         text.setTextSize(9 * getResources().getDisplayMetrics().scaledDensity);
         text.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
+        text.getTextBounds("0123456789", 0, 10, digitBounds);
+        textOutline = new Paint(text);
+        textOutline.setColor(0x66000000);
+        textOutline.setStyle(Paint.Style.STROKE);
+        // Android centers strokes on the glyph edge. Draw the full white fill last
+        // to cover the inward half, leaving a 0.45dp outline outside the glyph.
+        textOutline.setStrokeWidth(dp(0.9f));
+        textOutline.setStrokeJoin(Paint.Join.ROUND);
         line.setColor(Color.WHITE);
         line.setStrokeWidth(dp(0.7f));
         line.setStrokeCap(Paint.Cap.ROUND);
         setFocusable(false); setClickable(false);
         setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        // The window and this view have no background, outline, scrim or shadow.
+        // The window and this view have no background, scrim or shadow.
     }
 
     void update(DashboardClient.Snapshot snapshot) {
@@ -92,7 +103,10 @@ final class StatusStripView extends View {
 
         double scale = 1;
         for (int i = 0; i < count; i++) scale = Math.max(scale, Math.log1p(Math.max(upload[i], download[i]) / 1024.0));
-        float top = dp(3), bottom = getHeight() - dp(3);
+        // Split the difference between the original range and the tighter digit height.
+        float inset = line.getStrokeWidth() / 2 + dp(0.2f);
+        float top = (dp(3) + baseline + digitBounds.top + inset) / 2;
+        float bottom = (getHeight() - dp(3) + baseline + digitBounds.bottom - inset) / 2;
         drawSeries(canvas, download, x, graphWidth, top, bottom, scale, 225);
         drawSeries(canvas, upload, x, graphWidth, top, bottom, scale, 100);
         x += graphWidth + gap;
@@ -100,12 +114,17 @@ final class StatusStripView extends View {
         networkIcon.setAlpha(available ? 255 : 120);
         drawIcon(canvas, networkIcon, x, dp(10));
         x += iconWidth;
-        text.setAlpha(255); canvas.drawText(label, x, baseline, text);
+        drawText(canvas, label, x, baseline);
         x += text.measureText(label) + gap;
         drawIcon(canvas, downIcon, x, arrow); x += arrow + smallGap;
-        canvas.drawText(downRate, x, baseline, text); x += text.measureText(downRate) + metricGap;
+        drawText(canvas, downRate, x, baseline); x += text.measureText(downRate) + metricGap;
         drawIcon(canvas, upIcon, x, arrow); x += arrow + smallGap;
-        canvas.drawText(upRate, x, baseline, text);
+        drawText(canvas, upRate, x, baseline);
+    }
+
+    private void drawText(Canvas canvas, String value, float x, float baseline) {
+        canvas.drawText(value, x, baseline, textOutline);
+        canvas.drawText(value, x, baseline, text);
     }
 
     private void drawIcon(Canvas canvas, Drawable drawable, float left, float size) {
@@ -118,7 +137,8 @@ final class StatusStripView extends View {
         path.reset(); boolean connected = false;
         for (int i = 0; i < count; i++) {
             if (values[i] < 0) { connected = false; continue; }
-            float x = left + width * i / Math.max(1, count - 1);
+            // Keep a fixed history scale while samples accumulate; newest is at right.
+            float x = left + width * (HISTORY - count + i) / (HISTORY - 1);
             float y = bottom - (float) (Math.log1p(values[i] / 1024.0) / scale) * (bottom - top);
             if (connected) path.lineTo(x, y); else path.moveTo(x, y);
             connected = true;
