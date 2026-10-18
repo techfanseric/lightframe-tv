@@ -1,0 +1,23 @@
+# Local signing, credentials and machine configuration
+.local/
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p12
+*.pem
+*token*
+*secret*
+# Generated outputs and local SDKs
+**/build/
+dist/
+.local-tools/
+*.apk
+*.idsig
+# Editor/OS noise
+.DS_Store
+.idea/
+.vscode/
+__pycache__/
+*.pyc

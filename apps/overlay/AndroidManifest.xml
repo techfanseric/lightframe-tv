@@ -1,0 +1,10 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="local.simple.tvoverlay" android:versionCode="21" android:versionName="8.12">
+<uses-sdk android:minSdkVersion="28" android:targetSdkVersion="28"/>
+<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/><uses-permission android:name="android.permission.FOREGROUND_SERVICE"/><uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"/><uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+<uses-permission android:name="local.simple.tvhome.permission.CONTROL_OVERLAY"/>
+<uses-permission android:name="com.google.android.providers.gsf.permission.READ_GSERVICES"/>
+<uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
+<application android:label="@string/app_name" android:icon="@drawable/home_icon" android:theme="@android:style/Theme.Material.NoActionBar" android:allowBackup="false" android:usesCleartextTraffic="true">
+<service android:name=".OverlayRuntimeService" android:exported="true" android:permission="local.simple.tvhome.permission.CONTROL_OVERLAY" android:stopWithTask="false"/>
+
+</application></manifest>

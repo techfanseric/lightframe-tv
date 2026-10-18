@@ -1,0 +1,52 @@
+[
+  {
+    "icon": "app-window",
+    "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/app-window.svg",
+    "sha256": "78635d0da597104f526ea01dede8ab4d04ccabc7a2229c4baf17f921b15985de"
+  },
+  {
+    "icon": "power",
+    "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/power.svg",
+    "sha256": "1e6b84a659aa43f826cdd8df0a63d349720004e2ccb10c33e415a990a311aa05"
+  },
+  {
+    "icon": "activity",
+    "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/activity.svg",
+    "sha256": "050fbcda05e13c2051cf857683645e19c6b180861ef4d0cc28a6f09ba1ea1666"
+  },
+  {
+    "icon": "sliders-horizontal",
+    "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/sliders-horizontal.svg",
+    "sha256": "e43a00e5eb684e6cbb61083bed2528d7a3fa5f265693eb2b5f314cd432aa65f4"
+  },
+  {
+    "icon": "cable",
+    "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/cable.svg",
+    "sha256": "939a8e577c9b0eaf824fd288b3f3b760d7eca3ef30c910dbee60da2e215baa16"
+  },
+  {
+    "icon": "settings",
+    "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/settings.svg",
+    "sha256": "0ae27fd0f81999229e3127ac96c5b32edfea448e291d509e76212b917551d66b"
+  },
+  {
+    "icon": "network",
+    "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/network.svg",
+    "sha256": "626be730feea1e5ea7539fbf78b4a3fcb927ce5d7dc43364f2216908672ac792"
+  },
+  {
+    "icon": "arrow-down",
+    "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/arrow-down.svg",
+    "sha256": "2b641c7a59d39450edfed72067fcc9940a1a316a737346af23b4b9103c0689f2"
+  },
+  {
+    "icon": "arrow-up",
+    "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/arrow-up.svg",
+    "sha256": "8c22c25874c80bb062bef985d207d8f1d4a4d7847237d0a8cf720a3235968518"
+  },
+  {
+    "icon": "volume-x",
+    "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/volume-x.svg",
+    "sha256": "f382e421b7aae01172989f2b749ee87e44c0c82c16970b13a9ad5a323b613be0"
+  }
+]
