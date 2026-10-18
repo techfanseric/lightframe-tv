@@ -8,7 +8,9 @@
 
 轻幕不提供单独的桌面首页。开机后直接进入视频 App；观看时按首页键，只唤出覆盖在当前画面上的轻量切换菜单，选好应用即可直接切换。
 
-<!-- SCREENSHOT: current video with the HOME app-switcher open; awaiting a valid device capture. -->
+![轻幕：视频播放画面上打开应用切换菜单](docs/images/launcher-menu.png)
+
+电视实机：视频继续显示，首页键唤出应用切换菜单和常用设置。
 
 ## 核心特点
 

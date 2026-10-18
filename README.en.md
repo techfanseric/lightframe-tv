@@ -8,7 +8,9 @@
 
 Lightframe replaces the traditional launcher page with a lightweight menu over the current video. Press HOME, pick another app, and switch directly without visiting a separate desktop.
 
-<!-- SCREENSHOT: current video with the HOME app-switcher open; awaiting a valid capture. -->
+![Lightframe TV app switcher over the current video](docs/images/launcher-menu.png)
+
+On-device capture: the HOME app switcher and settings appear over the video.
 
 ## What it does
 

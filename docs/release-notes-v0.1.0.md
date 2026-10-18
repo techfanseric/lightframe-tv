@@ -16,3 +16,7 @@
 本次重命名保留原包名以支持现有设备更新：HOME 8.1/code9，Overlay 8.12/code21。
 
 已在 Android9/ARM32 小米电视固件开发，其他设备的原生设置、HDMI 与遥控器需实机确认。代理配置、视频应用与登录需另行准备；局部渐隐衬底不是真实跨应用动态模糊。
+
+## 实机效果
+
+![视频播放时的应用切换菜单](https://github.com/techfanseric/lightframe-tv/blob/main/docs/images/launcher-menu.png?raw=true)
