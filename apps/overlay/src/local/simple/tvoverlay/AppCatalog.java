@@ -6,7 +6,7 @@ import android.content.Intent;
 final class AppCatalog {
     static final String[] IDS={"youtube","bilibili","netflix"};
     static final String[] NAMES={"YouTube","哔哩哔哩","Netflix"};
-    static final String[][] PACKAGES={{"com.amazon.firetv.youtube"},{"com.xiaodianshi.tv.yst"},{"com.netflix.ninja","com.netflix.mediaclient"}};
+    static final String[][] PACKAGES={{"io.gh.reisxd.tizentube.cobalt"},{"com.xiaodianshi.tv.yst"},{"com.netflix.ninja","com.netflix.mediaclient"}};
     static int index(String id){for(int i=0;i<IDS.length;i++)if(IDS[i].equals(id))return i;return 0;}
     static int forPackage(String pkg){for(int i=0;i<PACKAGES.length;i++)for(String p:PACKAGES[i])if(p.equals(pkg))return i;return -1;}
     static Intent intent(Context c,int i){for(String p:PACKAGES[i]){
