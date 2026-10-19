@@ -37,13 +37,9 @@ public final class OverlayRuntimeService extends Service {
             try {
                 if (inputManager != null) {
                     int state = inputManager.getInputState(inputId);
+                    // Boot and CEC discovery also add already connected inputs.
+                    // Establish a baseline only; registration is not a cable insertion.
                     inputStates.put(inputId, state);
-                    TvInputInfo info = inputManager.getTvInputInfo(inputId);
-                    if (state == TvInputManager.INPUT_STATE_CONNECTED && info != null
-                            && info.getType() == TvInputInfo.TYPE_HDMI) {
-                        int port = physicalHdmiPort(info);
-                        if (port > 0) LauncherSupport.switchHdmi(OverlayRuntimeService.this, port);
-                    }
                 }
             } catch (RuntimeException ignored) { }
         }

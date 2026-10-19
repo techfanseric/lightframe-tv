@@ -12,7 +12,9 @@
 
 电视实机旧版截图：展示首页键菜单覆盖在视频画面上的效果。图中的广告声音开关已移除；v0.1.5 新增的智能家居入口和可选快捷行未出现在此图中。
 
-当前版本：[v0.1.5](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.1.5) · Home 8.4（12）／Overlay 8.22（31）。完整变更见 [更新记录](CHANGELOG.md)。
+当前版本：[v0.1.6](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.1.6) · Home 8.4（12）／Overlay 8.23（32）。完整变更见 [更新记录](CHANGELOG.md)。
+
+**v0.1.6** 修复开机或 CEC 重新发现已有 HDMI 设备时，轻幕误判为新接入设备并切走当前画面的问题。新增输入只记录状态，自动切换仍要求观察到断开到连接的变化；手动信源选择保留。后台更新已在实机验证，待机唤醒和冷启动仍待实际开机验收。
 
 ## YouTube 客户端
 

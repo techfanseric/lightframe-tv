@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.6
+
+- Fix HDMI input discovery opening the external player during startup or CEC device rediscovery. Adding an input now establishes its baseline; automatic switching still requires an observed disconnected-to-connected transition. Manual source selection remains available.
+- Bump Overlay to 8.23 (32); keep Home and the shared signing key unchanged.
+- Confirm the original HDMI launch came from the overlay in on-device boot logs. Build/signature checks and background installation passed, with TizenTube remaining in front and the overlay service restored. Standby wake and cold boot validation remain pending.
+
 ## 0.1.5
 
 - Add a native Home Assistant panel with room/device/entity discovery, cached registry fallback, read-only states and selected quick controls above the app row. Preserve app-row initial focus, MRU/current-app exclusion, wrapping navigation and smart status visibility.

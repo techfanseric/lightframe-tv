@@ -12,7 +12,9 @@ Lightframe replaces the traditional launcher page with a lightweight menu over t
 
 On-device capture of an earlier version, showing the HOME menu over video. The pictured ad-audio control has been removed. The smart-home entry and optional quick rows added in v0.1.5 are absent from this image.
 
-Current release: [v0.1.5](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.1.5) · Home 8.4 (12) / Overlay 8.22 (31). See the [changelog](CHANGELOG.md) for all changes.
+Current release: [v0.1.6](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.1.6) · Home 8.4 (12) / Overlay 8.23 (32). See the [changelog](CHANGELOG.md) for all changes.
+
+**v0.1.6** fixes HDMI discovery during startup or CEC rediscovery switching away from the current app. Added inputs now establish a baseline; automatic switching still requires an observed disconnected-to-connected transition. Manual source selection remains available. Background updating was verified on the TV; standby wake and cold boot validation remain pending.
 
 ## YouTube client
 
