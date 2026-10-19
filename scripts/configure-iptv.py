@@ -17,6 +17,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('serial')
     parser.add_argument('--launch', action='store_true', help='Open IPTV on the TV to run its configuration API')
+    parser.add_argument('--keep-current', action='store_true', help='Import sources without changing the currently selected source')
     args = parser.parse_args()
     manifest = json.loads((ROOT / '.local/iptv/sources.json').read_text())
     adb = [os.environ.get('ADB', 'adb'), '-P', os.environ.get('ADB_SERVER_PORT', '5037'), '-s', args.serial]
@@ -26,7 +27,7 @@ def main():
 
     # App-specific external files persist across cache clearing and need no broad storage grant.
     run('shell', 'mkdir', '-p', REMOTE)
-    sources = [manifest['combined']] + manifest['sources']
+    sources = [manifest['combined']] + manifest['sources'] + manifest.get('views', [])
     for item in sources:
         run('push', str(ROOT / '.local/iptv' / item['file']), REMOTE + '/' + item['file'])
     port = run('forward', 'tcp:0', 'tcp:10481')
@@ -65,13 +66,22 @@ def main():
                      'url': REMOTE + '/' + item['file'], 'isLocal': True} for item in sources]
         incoming_urls = {item['url'] for item in incoming}
         configs['iptvSourceList']['value'] = [item for item in existing if item['url'] not in incoming_urls] + incoming
-        configs['iptvSourceCurrent'] = incoming[0]
+        if not args.keep_current:
+            configs['iptvSourceCurrent'] = incoming[0]
+        expected_current = configs['iptvSourceCurrent']
+        migrations_file = ROOT / '.local/iptv/name-migrations.json'
+        if migrations_file.exists():
+            migrations = json.loads(migrations_file.read_text())
+            # MyTV stores favorites by display name, not tvg-id.
+            configs['iptvChannelFavoriteList'] = list(dict.fromkeys(
+                target for name in configs['iptvChannelFavoriteList']
+                for target in migrations.get(name, [name])))
         request('/api/configs', configs)
         actual = json.loads(request('/api/configs'))
-        if actual['iptvSourceCurrent'] != incoming[0] or not incoming_urls.issubset(
+        if actual['iptvSourceCurrent'] != expected_current or not incoming_urls.issubset(
                 {item['url'] for item in actual['iptvSourceList']['value']}):
             raise RuntimeError('Source configuration verification failed')
-        print(f'Imported {len(incoming)} sources; selected all public channels, Chinese first. Playback is not verified.')
+        print(f'Imported {len(incoming)} sources; selected {expected_current["name"]}. Playback is not verified.')
     finally:
         run('forward', '--remove', 'tcp:' + port)
 

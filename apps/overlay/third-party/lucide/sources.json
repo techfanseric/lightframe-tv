@@ -48,5 +48,40 @@
     "icon": "volume-x",
     "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/volume-x.svg",
     "sha256": "f382e421b7aae01172989f2b749ee87e44c0c82c16970b13a9ad5a323b613be0"
+  },
+  {
+    "icon": "house-plug",
+    "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/house-plug.svg",
+    "sha256": "7c4e7643714c686bb506ceb7c7349da5a952e5141452c9a83b6411fcb0a34cba"
+  },
+  {
+    "icon": "thermometer",
+    "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/thermometer.svg",
+    "sha256": "a56c95062445d52d95c51a77c4959d5a022539a0194205cc2ce2e9ce8f35847b"
+  },
+  {
+    "icon": "blinds",
+    "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/blinds.svg",
+    "sha256": "2230d33e68054927af711ecd4fe0dfb13d594120aa2a85bdf4dfe43fdb09ce7e"
+  },
+  {
+    "icon": "wind",
+    "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/wind.svg",
+    "sha256": "eb35f6f00125b779a993c21ee761432faf8fc3210272c94448f63e2196d419b7"
+  },
+  {
+    "icon": "bot",
+    "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/bot.svg",
+    "sha256": "e46fe72fc5b33d7a17b0112df85da9ded851860312e8353f4fe23d87a4ce77f5"
+  },
+  {
+    "icon": "lightbulb",
+    "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/lightbulb.svg",
+    "sha256": "e33bbec15b1e64cca958e086850f951c0dc2201cd5778bb3695fda3cb6ea457d"
+  },
+  {
+    "icon": "mic",
+    "url": "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/mic.svg",
+    "sha256": "9b940cd735d1ffa270ba670c4e677d9a09400f3fa81d6b3f405b12a3b67a59a8"
   }
 ]

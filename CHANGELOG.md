@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.5
+
+- Add a native Home Assistant panel with room/device/entity discovery, cached registry fallback, read-only states and selected quick controls above the app row. Preserve app-row initial focus, MRU/current-app exclusion, wrapping navigation and smart status visibility.
+- Support climate power and Celsius temperature adjustment, covers, fans, switches, lights and vacuum controls. Re-read climate power state before toggling; keep unsupported or disabled entities read-only.
+- Provision HA credentials through a DUMP-protected local import, encrypt tokens with Android Keystore and retain selected favorite order. Add an explicit microphone statistics diagnostic; speech recognition and Assist voice control remain unverified.
+- Rank IPTV entries within each group using an explicit Chinese-first editorial priority, followed by selected overseas broadcasters and natural station-name order. Keep stream alternatives adjacent; no audience measurement or live popularity is claimed.
+- Add a separate region-based IPTV source, retaining content categories and stream identities; preserve the selected source with `configure-iptv.py --keep-current`.
+- Enrich missing IPTV categories using reviewed station identities and explicit subjects; keep uncertain entries unclassified.
+- Use native Chinese names for domestic stations and append established Chinese names to overseas brands. Preserve EPG lookup names and migrate saved favorite names on import; record local audit and migration files.
+- Translate IPTV categories into Chinese and merge compound tags into one primary category; label undefined or unknown tags as “其他／待分类”. Preserve stream URLs and EPG identifiers.
+- Add `prepare-iptv.py --offline` to regenerate compatible playlists from local snapshots without refreshing sources.
+- Refresh both READMEs with release versions, smart-home setup, IPTV changes, remote navigation and an explicit old-screenshot caption.
+- Remove the unused legacy ad-mute client and its embedded LAN endpoint.
+- Ship unchanged Home 8.4 (12) and Overlay 8.22 (31) with the existing shared signing key. Private configuration, third-party APKs and playlist snapshots remain local.
+
 ## 0.1.4
 
 - Add an IPTV entry for MyTV (`top.yogiczy.mytv.tv`) to both app catalogs, startup selection and last-used-app recognition.

@@ -10,7 +10,9 @@ Lightframe replaces the traditional launcher page with a lightweight menu over t
 
 ![Lightframe TV app switcher over the current video](docs/images/launcher-menu.png)
 
-On-device capture of an earlier version: the HOME app switcher and settings appear over the video. v0.1.1 removes the ad-audio row shown at the top, leaving the app and settings rows.
+On-device capture of an earlier version, showing the HOME menu over video. The pictured ad-audio control has been removed. The smart-home entry and optional quick rows added in v0.1.5 are absent from this image.
+
+Current release: [v0.1.5](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.1.5) · Home 8.4 (12) / Overlay 8.22 (31). See the [changelog](CHANGELOG.md) for all changes.
 
 ## YouTube client
 
@@ -18,11 +20,21 @@ Starting with **v0.1.1**, Lightframe consistently uses [TizenTube Cobalt](https:
 
 Install TizenTube Cobalt separately (currently validated version: 2.0.3). The official YouTube app may remain installed for manual fallback; Lightframe does not switch back to it automatically. The user reported normal playback and no ads during this trial, which does not establish ad-free playback for every video.
 
-The current menu has **two rows: apps and settings**. The ad-audio row and its menu network calls have been removed. Overlay updates restore the background service without opening the menu or switching the video. HOME interaction and boot restoration remain for user validation when convenient.
+The menu retains **apps and settings rows**, with optional smart-home quick rows above the apps. The ad-audio row and its menu network calls have been removed. Overlay updates restore the background service without opening the menu or switching the video. HOME interaction and boot restoration remain for user validation when convenient.
 
 ## IPTV
 
 Starting with **v0.1.4**, the IPTV entry opens the separately installed MyTV player and supports startup selection, MRU ordering and current-app exclusion. Preparation and import scripts download the official player and public playlists into the ignored `.local/iptv/` directory, normalize supported streams and prioritize Chinese sources. See [IPTV setup](docs/iptv.md). Third-party APKs, playlist snapshots and device settings are not bundled in Lightframe releases.
+
+**v0.1.5** adds Chinese primary categories, reviewed Chinese station names and a separate region-based source. Entries use an editorial Chinese-first order within each group, keeping alternative streams adjacent. Imports preserve EPG lookup names and migrate favorite names. Use `--keep-current` to retain the selected source, or `prepare-iptv.py --offline` to regenerate from local snapshots. Stream counts do not establish playback availability; ordering does not represent live audience ratings.
+
+## Smart home
+
+Starting with **v0.1.5**, the settings row opens a native Home Assistant panel organized by room, device and entity. The catalog retains unassigned, offline and disabled devices, including registered devices without entities. Controls cover climate power and Celsius temperature adjustment, covers, lights, fans, switches and vacuum start/pause/dock. Other entities show read-only status.
+
+Choose and save favorite controls or status items to add quick rows above the apps: up to four items per row and three rows, limited by screen height. Opening the menu still focuses the app row. Import credentials with the local configuration script; the token is encrypted in app-private storage and configuration stays outside Git. See [Home Assistant setup and validation](docs/home-assistant.md).
+
+Remote microphone capture is available only as a manual diagnostic. Chinese speech recognition and Assist voice control remain unverified. State reads and command responses do not replace checking the actual device action.
 
 ## What it does
 
@@ -33,12 +45,24 @@ Starting with **v0.1.4**, the IPTV entry opens the separately installed MyTV pla
 - **Network status at a glance:** a small top strip shows proxy node, latency, upload/download rates and a traffic graph.
 - **Smart visibility by default:** hide the status strip in Bilibili and restore it elsewhere. Always-on and always-off remain available and are remembered.
 - **Direct settings:** input source, startup app, automatic startup, status strip, FlClash and system settings are immediately visible in one row.
+- **Smart-home shortcuts:** browse the Home Assistant catalog and select favorite controls or status items above the app row, with Lucide icons and app-row initial focus preserved.
 - **Restrained presentation:** left-aligned icons and labels, a continuous translucent scrim, and one focused container instead of many cards.
 - **Native input integration:** source selection and HDMI hotplug switching on the verified Xiaomi firmware.
 
 Proxy startup requires an already configured FlClash installation, subscription and system VPN permission. No proxy service, video apps or member accounts are bundled.
 
 Download **LightframeHome.apk** and **LightframeOverlay.apk** together from [Releases](https://github.com/techfanseric/lightframe-tv/releases/latest). The HOME relay and overlay are separate packages and must both be installed. Release APKs do not require an SDK to use.
+
+## Remote control
+
+| Key | Action |
+| --- | --- |
+| HOME | Open / close the switcher |
+| Left / right | Wrap within the current row |
+| Up / down | Move between smart-home, apps and settings rows |
+| OK | Open an app or execute the selected option |
+| Back | Close the switcher; go back one level in device and control pages |
+| Menu | Focus the settings row |
 
 ## Build and install
 
