@@ -20,10 +20,14 @@ Install TizenTube Cobalt separately (currently validated version: 2.0.3). The of
 
 The current menu has **two rows: apps and settings**. The ad-audio row and its menu network calls have been removed. Overlay updates restore the background service without opening the menu or switching the video. HOME interaction and boot restoration remain for user validation when convenient.
 
+## IPTV
+
+Starting with **v0.1.4**, the IPTV entry opens the separately installed MyTV player and supports startup selection, MRU ordering and current-app exclusion. Preparation and import scripts download the official player and public playlists into the ignored `.local/iptv/` directory, normalize supported streams and prioritize Chinese sources. See [IPTV setup](docs/iptv.md). Third-party APKs, playlist snapshots and device settings are not bundled in Lightframe releases.
+
 ## What it does
 
 - **No separate home screen:** stay centred on the current app instead of navigating a desktop.
-- **Boot directly into an app:** choose YouTube, Bilibili or Netflix, or follow the last-used app (the default). Automatic opening can be disabled independently.
+- **Boot directly into an app:** choose TizenTube, Bilibili, Netflix or IPTV, or follow the last-used app (the default). Automatic opening can be disabled independently.
 - **Switch straight from the video:** HOME opens the switcher, excludes the current app and selects the previous app. Left/right wraps; up/down changes rows.
 - **Detect and start the network proxy:** check the configured FlClash VPN and request startup when disconnected. YouTube / Netflix opening waits for controller and target-network readiness; Bilibili opens directly.
 - **Network status at a glance:** a small top strip shows proxy node, latency, upload/download rates and a traffic graph.

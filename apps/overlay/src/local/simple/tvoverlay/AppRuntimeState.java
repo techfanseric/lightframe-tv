@@ -8,7 +8,8 @@ import java.util.List;
 /** Read-only status. An unavailable system query never becomes a claim that an app is stopped. */
 final class AppRuntimeState {
     static String[] read(Context context) {
-        String[] states = {"状态未知", "状态未知", "状态未知"};
+        String[] states = new String[AppCatalog.IDS.length];
+        java.util.Arrays.fill(states, "状态未知");
         ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
         if (manager == null) return states;
         Method uidImportance = null;

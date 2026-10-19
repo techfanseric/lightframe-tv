@@ -41,7 +41,7 @@ public final class MainActivity extends Activity {
         LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setGravity(Gravity.CENTER);root.setBackgroundColor(0xff111318);
         TextView title=new TextView(this);title.setText("轻幕 · 贴片暂未启动");title.setTextColor(0xffeeeeee);title.setTextSize(24);root.addView(title);
         Button access=new Button(this);access.setText("允许贴片悬浮显示");access.setOnClickListener(v->{try{startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,android.net.Uri.parse("package:local.simple.tvoverlay")));}catch(RuntimeException e){startActivity(new Intent().setComponent(new android.content.ComponentName("com.xiaomi.mitv.settings","com.xiaomi.mitv.settings.entry.MainActivity")));}});root.addView(access);
-        for(int i=0;i<3;i++){final int app=i;Button b=new Button(this);b.setText(AppCatalog.NAMES[i]);b.setOnClickListener(v->AppCatalog.launch(this,app));root.addView(b);}
+        for(int i=0;i<AppCatalog.IDS.length;i++){final int app=i;Button b=new Button(this);b.setText(AppCatalog.NAMES[i]);b.setOnClickListener(v->AppCatalog.launch(this,app));root.addView(b);}
         setContentView(root);access.requestFocus();
     }
     @Override protected void onDestroy(){handler.removeCallbacksAndMessages(null);super.onDestroy();}

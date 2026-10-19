@@ -9,7 +9,7 @@ import java.util.List;
 /** Last actual use, not launcher display order or periodic sampling time. */
 final class RecentApps {
     private final Context context;
-    private final long[] used = new long[3];
+    private final long[] used = new long[AppCatalog.IDS.length];
     RecentApps(Context context) {
         this.context = context;
         for (int i = 0; i < used.length; i++) used[i] = LauncherSupport.preferences(context).getLong("switch_used_" + i, 0);
@@ -25,7 +25,8 @@ final class RecentApps {
         return latest;
     }
     int[] order(int current) {
-        Integer[] sorted = {0, 1, 2};
+        Integer[] sorted = new Integer[used.length];
+        for (int i = 0; i < sorted.length; i++) sorted[i] = i;
         Arrays.sort(sorted, (a, b) -> {
             if (a.equals(b)) return 0;
             if (a == current) return 1;
@@ -33,12 +34,12 @@ final class RecentApps {
             int byUse = Long.compare(used[b], used[a]);
             return byUse == 0 ? Integer.compare(a, b) : byUse;
         });
-        int[] order = new int[current >= 0 && current < 3 ? 2 : 3];
+        int[] order = new int[current >= 0 && current < used.length ? used.length - 1 : used.length];
         for (int i = 0; i < order.length; i++) order[i] = sorted[i];
         return order;
     }
     long[] readHistoricalUse() {
-        long[] historical = new long[3];
+        long[] historical = new long[AppCatalog.IDS.length];
         try {
             UsageStatsManager manager = (UsageStatsManager) context.getSystemService(Context.USAGE_STATS_SERVICE);
             long now = System.currentTimeMillis();

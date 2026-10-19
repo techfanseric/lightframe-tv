@@ -171,7 +171,7 @@ final class LauncherOverlay {
         LinearLayout options=new LinearLayout(service);options.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams optionRow=new LinearLayout.LayoutParams(-1,dp(62));optionRow.topMargin=dp(8);root.addView(options,optionRow);
         int[] order=recents.order(foreground);
-        TextView[] states=new TextView[3];View[] appTiles=new View[order.length],settingTiles=new View[6];TextView[] values=new TextView[6];
+        TextView[] states=new TextView[AppCatalog.IDS.length];View[] appTiles=new View[order.length],settingTiles=new View[6];TextView[] values=new TextView[6];
         for(int position=0;position<order.length;position++){
             final int app=order[position];
             LinearLayout tile=menuTile();tile.setOrientation(LinearLayout.HORIZONTAL);tile.setPadding(dp(12),dp(6),dp(12),dp(6));
@@ -182,7 +182,7 @@ final class LauncherOverlay {
             words.addView(menuText(AppCatalog.NAMES[app],14,Color.WHITE));
             TextView state=menuText(app==foreground?"正在使用":"正在使用".equals(runtime[app])?"后台驻留":runtime[app],10,0xffe3e6ea);words.addView(state);states[app]=state;
             tile.setOnClickListener(v->{if(app==foreground)hidePanel();else launch(app);});
-            appTiles[position]=tile;LinearLayout.LayoutParams cell=new LinearLayout.LayoutParams(dp(184),-1);if(position>0)cell.leftMargin=dp(6);apps.addView(tile,cell);
+            appTiles[position]=tile;LinearLayout.LayoutParams cell=new LinearLayout.LayoutParams(0,-1,1);if(position>0)cell.leftMargin=dp(6);apps.addView(tile,cell);
         }
         int[] icons={R.drawable.lucide_app_window,R.drawable.lucide_power,R.drawable.lucide_activity,R.drawable.lucide_sliders_horizontal,R.drawable.lucide_cable,R.drawable.lucide_settings};
         String[] labels={"开机应用","开机启动","状态栏","FlClash","信号源","系统设置"};
@@ -234,7 +234,7 @@ final class LauncherOverlay {
     }
     private void settingAction(int setting,TextView[] values){
         cancelPendingLaunch();android.content.SharedPreferences prefs=LauncherSupport.preferences(service);
-        if(setting==0){String policy=prefs.getString("native_default_app","last");String next="last".equals(policy)?AppCatalog.IDS[0]:AppCatalog.index(policy)==2?"last":AppCatalog.IDS[AppCatalog.index(policy)+1];prefs.edit().putString("native_default_app",next).apply();}
+        if(setting==0){String policy=prefs.getString("native_default_app","last");String next="last".equals(policy)?AppCatalog.IDS[0]:AppCatalog.index(policy)==AppCatalog.IDS.length-1?"last":AppCatalog.IDS[AppCatalog.index(policy)+1];prefs.edit().putString("native_default_app",next).apply();}
         else if(setting==1)prefs.edit().putBoolean("native_boot_enabled",!prefs.getBoolean("native_boot_enabled",true)).apply();
         else if(setting==2){String mode=statusMode();prefs.edit().putString("native_status_mode","smart".equals(mode)?"on":"on".equals(mode)?"off":"smart").apply();showChip();}
         else if(setting==3){hidePanel();Intent in=service.getPackageManager().getLaunchIntentForPackage("com.follow.clash");if(in!=null)service.startActivity(in.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));}

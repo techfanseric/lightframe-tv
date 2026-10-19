@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.4
+
+- Add an IPTV entry for MyTV (`top.yogiczy.mytv.tv`) to both app catalogs, startup selection and last-used-app recognition.
+- Extend MRU ordering, foreground exclusion and runtime status to all configured apps; distribute app tiles across the existing row while preserving initial focus and wrapping navigation.
+- Add local preparation, installation and source-import tools for the official MyTV player and public IPTV playlists. Normalize compatible entries, deduplicate streams and place Chinese sources first.
+- Fix configuration requests for the player’s AndroidAsync server by omitting Content-Type on bodyless GET requests. Preserve existing sources and preferences during repeat imports.
+- Ship Home 8.4 (12) and Overlay 8.17 (26) with the existing shared signing key. Third-party APKs, playlist snapshots and device settings remain local and are not release assets.
+- Background installation and source import were verified on the target Android 9 TV: six sources loaded, with 178 groups and 10,630 stream entries in the combined list. The user approved the experience; individual stream availability is not guaranteed.
+
 ## 0.1.3
 
 - Add subtle 0.45dp outer outlines at 40% black opacity to status text and network/traffic icons, preserving white stroke thickness.
