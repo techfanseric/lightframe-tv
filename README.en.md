@@ -12,9 +12,9 @@ Lightframe replaces the traditional launcher page with a lightweight menu over t
 
 On-device capture of an earlier version, showing the HOME menu over video. The pictured ad-audio control has been removed. The smart-home entry and optional quick rows added in v0.1.5 are absent from this image.
 
-Current release: [v0.1.6](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.1.6) · Home 8.4 (12) / Overlay 8.23 (32). See the [changelog](CHANGELOG.md) for all changes.
+Current release: [v0.1.7](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.1.7) · Home 8.4 (12) / Overlay 8.24 (33). See the [changelog](CHANGELOG.md) for all changes.
 
-**v0.1.6** fixes HDMI discovery during startup or CEC rediscovery switching away from the current app. Added inputs now establish a baseline; automatic switching still requires an observed disconnected-to-connected transition. Manual source selection remains available. Background updating was verified on the TV; standby wake and cold boot validation remain pending.
+**v0.1.7** adds configurable smart-home spaces and groups with compact rows, fixed bold space headings and a section divider. Home controls keep the main menu open; custom control submenus close after an action. Smart Clash visibility now also hides the strip in TV input mode.
 
 ## YouTube client
 
@@ -34,7 +34,7 @@ Starting with **v0.1.4**, the IPTV entry opens the separately installed MyTV pla
 
 Starting with **v0.1.5**, the settings row opens a native Home Assistant panel organized by room, device and entity. The catalog retains unassigned, offline and disabled devices, including registered devices without entities. Controls cover climate power and Celsius temperature adjustment, covers, lights, fans, switches and vacuum start/pause/dock. Other entities show read-only status.
 
-Choose and save favorite controls or status items to add quick rows above the apps: up to four items per row and three rows, limited by screen height. Opening the menu still focuses the app row. Import credentials with the local configuration script; the token is encrypted in app-private storage and configuration stays outside Git. See [Home Assistant setup and validation](docs/home-assistant.md).
+Configure spaces, group targets and details in a private JSON file, with one horizontally scrolling row per space and vertical scrolling for more spaces. Reorder, rename or hide spaces and groups on TV; existing connections retain the legacy favorites layout. Opening the menu still focuses the app row. Home operations keep the main menu and position; control submenus close after an action. Import credentials with the local configuration script; the token is encrypted in app-private storage and configuration stays outside Git. See [Home Assistant setup and validation](docs/home-assistant.md).
 
 Remote microphone capture is available only as a manual diagnostic. Chinese speech recognition and Assist voice control remain unverified. State reads and command responses do not replace checking the actual device action.
 
@@ -45,7 +45,7 @@ Remote microphone capture is available only as a manual diagnostic. Chinese spee
 - **Switch straight from the video:** HOME opens the switcher, excludes the current app and selects the previous app. Left/right wraps; up/down changes rows.
 - **Detect and start the network proxy:** check the configured FlClash VPN and request startup when disconnected. YouTube / Netflix opening waits for controller and target-network readiness; Bilibili opens directly.
 - **Network status at a glance:** a small top strip shows proxy node, latency, upload/download rates and a traffic graph.
-- **Smart visibility by default:** hide the status strip in Bilibili and restore it elsewhere. Always-on and always-off remain available and are remembered.
+- **Smart visibility by default:** hide the status strip in Bilibili or TV input mode (including HDMI) and restore it in other apps. Always-on and always-off remain available and are remembered.
 - **Direct settings:** input source, startup app, automatic startup, status strip, FlClash and system settings are immediately visible in one row.
 - **Smart-home shortcuts:** browse the Home Assistant catalog and select favorite controls or status items above the app row, with Lucide icons and app-row initial focus preserved.
 - **Restrained presentation:** left-aligned icons and labels, a continuous translucent scrim, and one focused container instead of many cards.

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.7
+
+- Add configurable smart-home spaces with one horizontal group row per space, scrolling in both directions and fixed, bold space headings. Keep app-row initial focus, MRU exclusion and wrapping navigation.
+- Use compact 44dp space rows and a divider separating persistent home controls from application switching.
+- Keep the main menu, focus and scroll positions after smart-home operations; suspend its timeout for the home-control session. Use custom control submenus that close after selecting an action without reopening the group.
+- Configure space/group order, labels and visibility on TV; import group targets and details through private JSON. Add a DUMP-protected layout readback without exposing credentials; retain legacy favorites when no space layout is configured.
+- Hide the Clash status strip in TV input mode as well as Bilibili when smart visibility is selected; retain always-on and always-off choices.
+- Ship unchanged Home 8.4 (12) and Overlay 8.24 (33) with the existing shared signing key. Personal HA presets, credentials and device preferences remain local.
+
 ## 0.1.6
 
 - Fix HDMI input discovery opening the external player during startup or CEC device rediscovery. Adding an input now establishes its baseline; automatic switching still requires an observed disconnected-to-connected transition. Manual source selection remains available.

@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="local.simple.tvoverlay" android:versionCode="32" android:versionName="8.23">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="local.simple.tvoverlay" android:versionCode="33" android:versionName="8.24">
 <uses-sdk android:minSdkVersion="28" android:targetSdkVersion="28"/>
 <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/><uses-permission android:name="android.permission.FOREGROUND_SERVICE"/><uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"/><uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 <uses-permission android:name="local.simple.tvhome.permission.CONTROL_OVERLAY"/>

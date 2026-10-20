@@ -22,6 +22,7 @@ final class LauncherOverlay {
     private final HomeAssistantClient homeAssistant;
     private final SmartHomeUi smartHome;
     private final java.util.Map<String,TextView> homeStates=new java.util.HashMap<>();
+    private final java.util.Map<TextView,HomeControl> groupStates=new java.util.HashMap<>();
     private boolean homeRefreshPending;
     private final Runnable homeRefresh=new Runnable(){public void run(){
         if(closed||panel==null||homeRefreshPending)return;
@@ -36,9 +37,10 @@ final class LauncherOverlay {
     private boolean automaticLaunch;
     private StatusStripView statusStrip;
     private int foreground=-1;
-    private boolean screenOn=true,closed;
+    private boolean sourceMode;
+    private boolean screenOn=true,closed,homeControlSession;
     private AlertDialog dialog;
-    private final Runnable dismiss=()->hidePanel();
+    private final Runnable dismiss=()->{if(!homeControlSession)hidePanel();};
     private final Runnable homeTransition=()->{showChip();if(panel==null&&!menuLoading)showPanel();else hidePanel();};
     private final Runnable poll=new Runnable(){public void run(){
         if(closed||!screenOn)return;
@@ -67,28 +69,29 @@ final class LauncherOverlay {
         if(homeAssistant.configured())homeAssistant.refresh(snapshot->{if(!closed){updateHomeStates();android.util.Log.i("HomeOverlay","HA catalog connected="+snapshot.connected+" devices="+homeAssistant.catalog().registeredDeviceCount+" rooms="+homeAssistant.catalog().rooms.size()+" entities="+homeAssistant.controls().size()+" favorites="+homeAssistant.favorites().size()+" current="+foreground);}});
     }
     void foreground(String pkg){int app=AppCatalog.forPackage(pkg);
-        if(app>=0){foreground=app;recents.record(app,System.currentTimeMillis());LauncherSupport.preferences(service).edit().putString("last_native_app",AppCatalog.IDS[app]).putString("last_video_app",AppCatalog.IDS[app]).apply();showChip();}
+        if(app>=0){sourceMode=false;foreground=app;recents.record(app,System.currentTimeMillis());LauncherSupport.preferences(service).edit().putString("last_native_app",AppCatalog.IDS[app]).putString("last_video_app",AppCatalog.IDS[app]).apply();showChip();}
         else if(pkg!=null&&!pkg.equals(service.getPackageName())&&!pkg.equals("local.simple.tvhome")&&!pkg.equals("com.android.systemui")){
-            foreground=-1;hidePanel();showChip();
+            sourceMode="com.xiaomi.mitv.tvplayer".equals(pkg);foreground=-1;hidePanel();showChip();
         }
     }
     private long lastUsageRead,lastLaunchAt;
     private void refreshForeground(){
         if(closed||!usageBusy.compareAndSet(false,true))return;
         usageWorker.execute(()->{
-            Integer found=null;long observedAt=0;
+            Integer found=null;long observedAt=0;boolean foundSource=false;
             try {
                 android.app.usage.UsageStatsManager usage=(android.app.usage.UsageStatsManager)service.getSystemService(Context.USAGE_STATS_SERVICE);
-                long now=System.currentTimeMillis();android.app.usage.UsageEvents events=usage.queryEvents(lastUsageRead==0?now-10*60*1000L:lastUsageRead,now);
+                // Recover the current source even after a long HDMI session or service update.
+                long now=System.currentTimeMillis();android.app.usage.UsageEvents events=usage.queryEvents(lastUsageRead==0?now-24*60*60*1000L:lastUsageRead,now);
                 android.app.usage.UsageEvents.Event event=new android.app.usage.UsageEvents.Event();String last=null;
                 while(events.hasNextEvent()){events.getNextEvent(event);String pkg=event.getPackageName();
                     if(event.getEventType()==android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND && pkg!=null
                         && !pkg.equals("local.simple.tvhome") && !pkg.equals(service.getPackageName()) && !pkg.equals("com.android.systemui")){last=pkg;observedAt=event.getTimeStamp();}
                 }
-                lastUsageRead=now-1000;if(last!=null)found=AppCatalog.forPackage(last);
+                lastUsageRead=now-1000;if(last!=null){found=AppCatalog.forPackage(last);foundSource="com.xiaomi.mitv.tvplayer".equals(last);}
             }catch(RuntimeException ignored){}
-            final Integer result=found;final long observationTime=observedAt;usageBusy.set(false);
-            handler.post(()->{if(closed||result==null||observationTime<lastLaunchAt)return;boolean changed=foreground!=result;foreground=result;
+            final Integer result=found;final boolean resultSource=foundSource;final long observationTime=observedAt;usageBusy.set(false);
+            handler.post(()->{if(closed||result==null||observationTime<lastLaunchAt)return;boolean changed=foreground!=result;foreground=result;sourceMode=resultSource;
                 if(foreground>=0){recents.record(foreground,observationTime);LauncherSupport.preferences(service).edit().putString("last_video_app",AppCatalog.IDS[foreground]).apply();}
                 LauncherSupport.preferences(service).edit().putString("last_native_app",foreground<0?"":AppCatalog.IDS[foreground]).apply();
                 showChip();
@@ -129,7 +132,7 @@ final class LauncherOverlay {
     }
     private void launchNow(int app){hidePanel();completeAutomaticLaunch();
         android.util.Log.i("HomeNetwork","launch app="+AppCatalog.IDS[app]);if(dialog!=null){dialog.dismiss();dialog=null;}
-        if(AppCatalog.launch(service,app)){lastLaunchAt=System.currentTimeMillis();foreground=app;recents.record(app,lastLaunchAt);LauncherSupport.preferences(service).edit().putString("last_native_app",AppCatalog.IDS[app]).putString("last_video_app",AppCatalog.IDS[app]).apply();showChip();}
+        if(AppCatalog.launch(service,app)){lastLaunchAt=System.currentTimeMillis();sourceMode=false;foreground=app;recents.record(app,lastLaunchAt);LauncherSupport.preferences(service).edit().putString("last_native_app",AppCatalog.IDS[app]).putString("last_video_app",AppCatalog.IDS[app]).apply();showChip();}
         else{Toast.makeText(service,AppCatalog.NAMES[app]+" 暂时无法打开",Toast.LENGTH_SHORT).show();showPanel();}
     }
     private WindowManager.LayoutParams params(int width,int height,boolean focus){
@@ -143,7 +146,7 @@ final class LauncherOverlay {
     }
     private void showChip(){
         String mode=statusMode();
-        if(closed||!screenOn||"off".equals(mode)||("smart".equals(mode)&&foreground==1)){removeChip();return;}
+        if(closed||!screenOn||"off".equals(mode)||("smart".equals(mode)&&(foreground==1||sourceMode))){removeChip();return;}
         if(chip!=null)return;
         statusStrip=new StatusStripView(service);chip=statusStrip;
         WindowManager.LayoutParams p=params(dp(440),dp(18),false);
@@ -162,14 +165,15 @@ final class LauncherOverlay {
             if(closed||request!=panelRequest)return;
             menuLoading=false;int current=-1,count=0;
             for(int app=0;app<runtime.length;app++)if("正在使用".equals(runtime[app])){current=app;count++;}
-            if(count==1&&foreground<0){foreground=current;lastLaunchAt=System.currentTimeMillis();recents.record(current,lastLaunchAt);LauncherSupport.preferences(service).edit().putString("last_native_app",AppCatalog.IDS[current]).putString("last_video_app",AppCatalog.IDS[current]).apply();showChip();}
+            if(count==1&&foreground<0&&!sourceMode){foreground=current;lastLaunchAt=System.currentTimeMillis();recents.record(current,lastLaunchAt);LauncherSupport.preferences(service).edit().putString("last_native_app",AppCatalog.IDS[current]).putString("last_video_app",AppCatalog.IDS[current]).apply();showChip();}
             buildPanel(runtime);
         });});
     }
     private void buildPanel(String[] runtime){if(panel!=null)return;
+        homeControlSession=false;
         LinearLayout root=new LinearLayout(service){@Override public boolean dispatchKeyEvent(KeyEvent e){
             if(e.getAction()==KeyEvent.ACTION_DOWN)cancelPendingLaunch();
-            handler.removeCallbacks(dismiss);handler.postDelayed(dismiss,15000);
+            handler.removeCallbacks(dismiss);if(!homeControlSession)handler.postDelayed(dismiss,15000);
             if(e.getKeyCode()==KeyEvent.KEYCODE_BACK){if(e.getAction()==KeyEvent.ACTION_UP)hidePanel();return true;}
             if(e.getKeyCode()==KeyEvent.KEYCODE_MENU){if(e.getAction()==KeyEvent.ACTION_UP&&settingsFirst!=null)settingsFirst.requestFocus();return true;}
             return super.dispatchKeyEvent(e);
@@ -180,7 +184,44 @@ final class LauncherOverlay {
         java.util.List<HomeControl> favorites=homeAssistant.favorites();
         int capacity=MenuNavigation.quickCapacity(Math.round(service.getResources().getDisplayMetrics().heightPixels/service.getResources().getDisplayMetrics().density));
         int homeRowCount=MenuNavigation.quickRows(favorites.size(),capacity/4);
-        homeStates.clear();
+        homeStates.clear();groupStates.clear();
+        if(homeAssistant.hasQuickLayout()){
+            java.util.List<HomeQuickLayout.Space> spaces=new java.util.ArrayList<>();
+            for(HomeQuickLayout.Space space:homeAssistant.quickLayout().spaces)if(space.visible&&space.groups.stream().anyMatch(g->g.visible))spaces.add(space);
+            homeRowCount=Math.min(spaces.size(),Math.max(1,capacity/4));
+            if(!spaces.isEmpty()){
+                ScrollView vertical=new ScrollView(service);vertical.setFillViewport(false);vertical.setClipToPadding(false);vertical.setFocusable(false);
+                LinearLayout stack=new LinearLayout(service);stack.setOrientation(1);vertical.addView(stack);root.addView(vertical,new LinearLayout.LayoutParams(-1,dp(44*homeRowCount)));
+                // First configured space is closest to the application row: UP starts in the living room.
+                for(int index=spaces.size()-1;index>=0;index--){
+                    HomeQuickLayout.Space space=spaces.get(index);LinearLayout row=new LinearLayout(service);row.setGravity(Gravity.CENTER_VERTICAL);
+                    stack.addView(row,new LinearLayout.LayoutParams(-1,dp(44)));
+                    // The space heading stays outside the horizontal scroller as a fixed row anchor.
+                    LinearLayout heading=new LinearLayout(service);heading.setGravity(Gravity.CENTER_VERTICAL);
+                    TextView roomLabel=menuText(space.name,12,0xfff6f8fb);roomLabel.setTypeface(null,Typeface.BOLD);
+                    heading.addView(roomLabel,new LinearLayout.LayoutParams(0,-2,1));
+                    View rule=new View(service);rule.setBackgroundColor(0x55cbd2da);
+                    LinearLayout.LayoutParams ruleLayout=new LinearLayout.LayoutParams(dp(1),dp(20));ruleLayout.leftMargin=dp(4);ruleLayout.rightMargin=dp(6);heading.addView(rule,ruleLayout);
+                    row.addView(heading,new LinearLayout.LayoutParams(dp(60),dp(40)));
+                    HorizontalScrollView horizontal=new HorizontalScrollView(service);horizontal.setFocusable(false);horizontal.setHorizontalScrollBarEnabled(false);row.addView(horizontal,new LinearLayout.LayoutParams(0,dp(40),1));
+                    LinearLayout cells=new LinearLayout(service);horizontal.addView(cells);
+                    java.util.List<View> tiles=new java.util.ArrayList<>();
+                    int tileWidth=Math.max(100,(Math.min(744,Math.round(service.getResources().getDisplayMetrics().widthPixels/service.getResources().getDisplayMetrics().density))-148)/4);
+                    for(HomeQuickLayout.Group group:space.groups){if(!group.visible)continue;
+                        HomeControl control=group.control(homeAssistant.catalog());LinearLayout tile=menuTile();tile.setOrientation(LinearLayout.HORIZONTAL);tile.setPadding(dp(7),dp(3),dp(7),dp(3));
+                        ImageView icon=new ImageView(service);icon.setImageResource(SmartHomeUi.icon(control));tile.addView(icon,new LinearLayout.LayoutParams(dp(18),dp(18)));
+                        LinearLayout words=new LinearLayout(service);words.setOrientation(1);words.setGravity(Gravity.CENTER_VERTICAL);LinearLayout.LayoutParams wordLayout=new LinearLayout.LayoutParams(0,-1,1);wordLayout.leftMargin=dp(6);tile.addView(words,wordLayout);
+                        words.addView(menuText(group.name,12,Color.WHITE));TextView state=menuText(SmartHomeUi.status(control,homeAssistant.snapshot()),9,0xffe3e6ea);words.addView(state);groupStates.put(state,control);
+                        tile.setOnClickListener(v->controlHome(()->smartHome.showGroup(group)));
+                        tile.setOnLongClickListener(v->{controlHome(()->smartHome.showGroupDetails(group));return true;});
+                        LinearLayout.LayoutParams cell=new LinearLayout.LayoutParams(dp(tileWidth),-1);cell.rightMargin=dp(6);cells.addView(tile,cell);tiles.add(tile);
+                    }
+                    navigationRows.add(tiles.toArray(new View[0]));
+                }
+                vertical.post(()->vertical.scrollTo(0,stack.getHeight()));
+            }
+        }else{
+
         for(int row=0;row<homeRowCount;row++){
             LinearLayout controls=new LinearLayout(service);controls.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);
             LinearLayout.LayoutParams rowLayout=new LinearLayout.LayoutParams(-1,dp(60));rowLayout.bottomMargin=dp(4);root.addView(controls,rowLayout);
@@ -191,10 +232,18 @@ final class LauncherOverlay {
                 LinearLayout words=new LinearLayout(service);words.setOrientation(1);words.setGravity(Gravity.CENTER_VERTICAL);
                 LinearLayout.LayoutParams wordLayout=new LinearLayout.LayoutParams(0,-1,1);wordLayout.leftMargin=dp(9);tile.addView(words,wordLayout);
                 words.addView(menuText(control.name,13,Color.WHITE));TextView state=menuText(SmartHomeUi.status(control,homeAssistant.snapshot()),10,0xffe3e6ea);words.addView(state);homeStates.put(control.id,state);
-                tile.setOnClickListener(v->{hidePanel();smartHome.showControl(control);});tiles[column]=tile;
+                tile.setOnClickListener(v->controlHome(()->smartHome.showControl(control)));tiles[column]=tile;
                 LinearLayout.LayoutParams cell=new LinearLayout.LayoutParams(0,-1,1);if(column>0)cell.leftMargin=dp(6);controls.addView(tile,cell);
             }
             navigationRows.add(tiles);
+        }
+        }
+        if(homeRowCount>0){
+            LinearLayout boundary=new LinearLayout(service);boundary.setGravity(Gravity.CENTER_VERTICAL);
+            View left=new View(service);left.setBackgroundColor(0x45ffffff);boundary.addView(left,new LinearLayout.LayoutParams(0,dp(1),1));
+            TextView hint=menuText("智能家居 · 操作后保留菜单",9,0xffcbd2da);hint.setPadding(dp(10),0,dp(10),0);boundary.addView(hint);
+            View right=new View(service);right.setBackgroundColor(0x45ffffff);boundary.addView(right,new LinearLayout.LayoutParams(0,dp(1),1));
+            root.addView(boundary,new LinearLayout.LayoutParams(-1,dp(20)));
         }
         LinearLayout apps=new LinearLayout(service);apps.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams appRow=new LinearLayout.LayoutParams(-1,dp(70));root.addView(apps,appRow);
@@ -237,7 +286,7 @@ final class LauncherOverlay {
                 tile.setNextFocusDownId(row==navigationRows.size()-1?tile.getId():below[MenuNavigation.adjacentColumn(column,tiles.length,below.length)].getId());
             }
         }
-        panel=root;WindowManager.LayoutParams p=params(Math.min(dp(744),service.getResources().getDisplayMetrics().widthPixels),dp(196+64*homeRowCount),true);p.gravity=Gravity.LEFT|Gravity.CENTER_VERTICAL;p.x=0;p.y=0;
+        panel=root;WindowManager.LayoutParams p=params(Math.min(dp(744),service.getResources().getDisplayMetrics().widthPixels),dp(196+(homeAssistant.hasQuickLayout()?44:64)*homeRowCount+(homeRowCount>0?20:0)),true);p.gravity=Gravity.LEFT|Gravity.CENTER_VERTICAL;p.x=0;p.y=0;
         // Keep the rest of the picture at its original brightness.
         p.flags&=~WindowManager.LayoutParams.FLAG_DIM_BEHIND;p.dimAmount=0;
         try{
@@ -273,10 +322,15 @@ final class LauncherOverlay {
         else if(setting==3){hidePanel();Intent in=service.getPackageManager().getLaunchIntentForPackage("com.follow.clash");if(in!=null)service.startActivity(in.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));}
         else if(setting==4){hidePanel();LauncherSupport.openSourcePopup(service);}
         else if(setting==5){hidePanel();service.startActivity(new Intent().setComponent(new ComponentName("com.xiaomi.mitv.settings","com.xiaomi.mitv.settings.entry.MainActivity")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));}
-        else if(setting==6){hidePanel();smartHome.showHub();}
+        else if(setting==6)controlHome(smartHome::showHub);
         if(panel!=null)updateSettingValues(values);
     }
-    private void updateHomeStates(){for(HomeControl control:homeAssistant.controls()){TextView label=homeStates.get(control.id);if(label!=null)label.setText(SmartHomeUi.status(control,homeAssistant.snapshot()));}}
+    private void controlHome(Runnable action){
+        // Keep the same views, focus and scroll positions for consecutive device operations.
+        // A home-control session ends explicitly with BACK/HOME or application switching.
+        homeControlSession=true;handler.removeCallbacks(dismiss);action.run();
+    }
+    private void updateHomeStates(){for(java.util.Map.Entry<TextView,HomeControl> item:groupStates.entrySet())item.getKey().setText(SmartHomeUi.status(item.getValue(),homeAssistant.snapshot()));for(HomeControl control:homeAssistant.controls()){TextView label=homeStates.get(control.id);if(label!=null)label.setText(SmartHomeUi.status(control,homeAssistant.snapshot()));}}
     private void hidePanel(){panelRequest++;menuLoading=false;openSettingsRow=false;handler.removeCallbacks(dismiss);handler.removeCallbacks(homeRefresh);homeStates.clear();if(panel!=null){try{wm.removeView(panel);}catch(RuntimeException ignored){}panel=null;settingsFirst=null;}}
     private void showNetworkCard(String message){
         if(networkCard!=null){networkLabel.setText(message);networkHint.setText(networkGate.isWaiting()?"网络就绪后自动打开 · 首页键可选择其他应用":"首页键选择应用或重试");return;}

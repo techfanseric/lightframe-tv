@@ -7,6 +7,11 @@ import org.json.JSONObject;
 /** Explicit ADB-only provisioning. Never accept a token or a path from an unprivileged app. */
 public final class SmartHomeConfigReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context context,Intent intent){
+        if("local.simple.tvoverlay.GET_HOME_LAYOUT".equals(intent.getAction())){
+            HomeAssistantClient client=new HomeAssistantClient(context);
+            try{setResultCode(1);setResultData(client.quickRows().toString());}finally{client.close();}
+            return;
+        }
         if("local.simple.tvoverlay.PROBE_REMOTE_VOICE".equals(intent.getAction())){String result=RemoteVoiceProbe.start(context,intent.getIntExtra("source",6));setResultCode(result.startsWith("Probe started")?1:0);setResultData(result);return;}
         if("local.simple.tvoverlay.REMOTE_VOICE_RESULT".equals(intent.getAction())){setResultCode(1);setResultData(context.getSharedPreferences("voice_probe",Context.MODE_PRIVATE).getString("result","not started"));return;}
         if(!"local.simple.tvoverlay.CONFIGURE_HOME_ASSISTANT".equals(intent.getAction()))return;
