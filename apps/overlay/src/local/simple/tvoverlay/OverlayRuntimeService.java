@@ -80,7 +80,12 @@ public final class OverlayRuntimeService extends Service {
                 String secret=intent.getStringExtra("core_secret");if(secret!=null&&!secret.isEmpty()&&secret.length()<257)LauncherSupport.preferences(this).edit().putString("core_secret",secret).apply();
                 if(!android.provider.Settings.canDrawOverlays(this)){ResultReceiver missing=intent.getParcelableExtra("reply");if(missing!=null)missing.send(0,null);return START_STICKY;}
                 ResultReceiver reply=intent.getParcelableExtra("reply");if(reply!=null)reply.send(1,null);
-                if("HOME".equals(intent.getAction()))requestHome(intent.getBooleanExtra("settings",false));
+                if("CAPTURE".equals(intent.getAction())){
+                    android.media.projection.MediaProjectionManager manager=(android.media.projection.MediaProjectionManager)getSystemService(MEDIA_PROJECTION_SERVICE);
+                    BackdropCapture.start(this,manager.getMediaProjection(intent.getIntExtra("result",0),intent.getParcelableExtra("data")));
+                    new Handler(Looper.getMainLooper()).postDelayed(()->requestHome(true),900);
+                }
+                else if("HOME".equals(intent.getAction()))requestHome(intent.getBooleanExtra("settings",false));
                 else if("BOOT".equals(intent.getAction()))requestBoot();
                 android.util.Log.i("HomeOverlay","runtime handled "+intent.getAction());
             }catch(RuntimeException error){
@@ -132,6 +137,7 @@ public final class OverlayRuntimeService extends Service {
     }
 
     @Override public void onDestroy() {
+        BackdropCapture.stop();
         instance=null;if(overlay!=null){overlay.close();overlay=null;}
 
         if (callbackRegistered && inputManager != null) {

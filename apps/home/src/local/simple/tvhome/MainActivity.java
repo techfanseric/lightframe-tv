@@ -35,7 +35,7 @@ public final class MainActivity extends Activity {
             .putExtra("settings",getIntent().getBooleanExtra("overlay_settings",false)).putExtra("reply",remoteReply)
             .putExtra("core_secret",LauncherSupport.preferences(this).getString("core_secret",""));
         handler.postDelayed(()->{if(request==requestId&&!answered[0]&&!isFinishing())fallback();},5000);
-        try{startForegroundService(command);}catch(RuntimeException error){answered[0]=true;fallback();}
+        try{startForegroundService(command);}catch(RuntimeException error){android.util.Log.e("HomeOverlay","Unable to start overlay runtime",error);answered[0]=true;fallback();}
     }
     private void fallback(){
         LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setGravity(Gravity.CENTER);root.setBackgroundColor(0xff111318);

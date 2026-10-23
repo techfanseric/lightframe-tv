@@ -161,15 +161,15 @@ final class LauncherOverlay {
     private void showPanel(){
         if(panel!=null||menuLoading)return;
         menuLoading=true;final int request=++panelRequest;
-        usageWorker.execute(()->{String[] runtime=AppRuntimeState.read(service);handler.post(()->{
+        usageWorker.execute(()->{android.graphics.Bitmap backdrop=BackdropCapture.sample();String[] runtime=AppRuntimeState.read(service);handler.post(()->{
             if(closed||request!=panelRequest)return;
             menuLoading=false;int current=-1,count=0;
             for(int app=0;app<runtime.length;app++)if("正在使用".equals(runtime[app])){current=app;count++;}
             if(count==1&&foreground<0&&!sourceMode){foreground=current;lastLaunchAt=System.currentTimeMillis();recents.record(current,lastLaunchAt);LauncherSupport.preferences(service).edit().putString("last_native_app",AppCatalog.IDS[current]).putString("last_video_app",AppCatalog.IDS[current]).apply();showChip();}
-            buildPanel(runtime);
+            buildPanel(runtime,backdrop);
         });});
     }
-    private void buildPanel(String[] runtime){if(panel!=null)return;
+    private void buildPanel(String[] runtime,android.graphics.Bitmap backdrop){if(panel!=null)return;
         homeControlSession=false;
         LinearLayout root=new LinearLayout(service){@Override public boolean dispatchKeyEvent(KeyEvent e){
             if(e.getAction()==KeyEvent.ACTION_DOWN)cancelPendingLaunch();
@@ -178,8 +178,12 @@ final class LauncherOverlay {
             if(e.getKeyCode()==KeyEvent.KEYCODE_MENU){if(e.getAction()==KeyEvent.ACTION_UP&&settingsFirst!=null)settingsFirst.requestFocus();return true;}
             return super.dispatchKeyEvent(e);
         }};
-        root.setOrientation(1);root.setPadding(dp(32),dp(28),dp(32),dp(28));
-        root.setBackground(new MenuBackdropDrawable());
+        android.animation.LayoutTransition contentTransition=new android.animation.LayoutTransition();
+        contentTransition.setDuration(220);
+        contentTransition.enableTransitionType(android.animation.LayoutTransition.CHANGING);
+        root.setLayoutTransition(contentTransition);
+        root.setOrientation(1);root.setPadding(dp(40),dp(92),dp(40),dp(92));
+        root.setBackground(backdrop==null?new MenuBackdropDrawable():new SampledBackdropDrawable(backdrop,root));
         java.util.List<View[]> navigationRows=new java.util.ArrayList<>();
         java.util.List<HomeControl> favorites=homeAssistant.favorites();
         int capacity=MenuNavigation.quickCapacity(Math.round(service.getResources().getDisplayMetrics().heightPixels/service.getResources().getDisplayMetrics().density));
@@ -286,19 +290,18 @@ final class LauncherOverlay {
                 tile.setNextFocusDownId(row==navigationRows.size()-1?tile.getId():below[MenuNavigation.adjacentColumn(column,tiles.length,below.length)].getId());
             }
         }
-        panel=root;WindowManager.LayoutParams p=params(Math.min(dp(744),service.getResources().getDisplayMetrics().widthPixels),dp(196+(homeAssistant.hasQuickLayout()?44:64)*homeRowCount+(homeRowCount>0?20:0)),true);p.gravity=Gravity.LEFT|Gravity.CENTER_VERTICAL;p.x=0;p.y=0;
-        // Keep the rest of the picture at its original brightness.
-        p.flags&=~WindowManager.LayoutParams.FLAG_DIM_BEHIND;p.dimAmount=0;
+        panel=root;WindowManager.LayoutParams p=params(Math.min(dp(744),service.getResources().getDisplayMetrics().widthPixels),WindowManager.LayoutParams.WRAP_CONTENT,true);p.gravity=Gravity.LEFT|Gravity.CENTER_VERTICAL;p.x=0;p.y=0;
+        // Dim the entire underlying picture while the menu is visible.
+        p.flags|=WindowManager.LayoutParams.FLAG_DIM_BEHIND;p.dimAmount=0.38f;
         try{
             wm.addView(panel,p);if(openSettingsRow){settingsFirst.requestFocus();openSettingsRow=false;}else appTiles[0].requestFocus();handler.postDelayed(dismiss,15000);
             handler.removeCallbacks(homeRefresh);homeRefresh.run();
             android.util.Log.i("HomeOverlay","menu shown current="+foreground+" first="+order[0]);
         }catch(RuntimeException e){panel=null;settingsFirst=null;android.util.Log.w("HomeOverlay","show failed "+e.getClass().getSimpleName());}
     }
-    private GradientDrawable glass(boolean focused){
-        GradientDrawable surface=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-            focused?new int[]{0x557d8896,0x3d596574}:new int[]{Color.TRANSPARENT,Color.TRANSPARENT});
-        surface.setCornerRadius(dp(8));return surface;
+    private android.graphics.drawable.Drawable glass(boolean focused){
+        return focused ? new FocusHaloDrawable(dp(4))
+            : new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT);
     }
     private LinearLayout menuTile(){
         LinearLayout tile=new LinearLayout(service);tile.setId(View.generateViewId());tile.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);tile.setFocusable(true);tile.setFocusableInTouchMode(true);tile.setClickable(true);
