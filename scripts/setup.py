@@ -17,7 +17,6 @@ import sys
 HOME = "local.simple.tvhome.dock"
 OVERLAY = "local.simple.tvoverlay.dock"
 COMPONENT = HOME + "/.MainActivity"
-BOOT_RECEIVER = HOME + "/.BootReceiver"
 OLD = ("local.simple.tvhome", "local.simple.tvoverlay")
 REQUIRED = ((HOME, "LightframeHome-Parallel.apk"),
             (OVERLAY, "LightframeOverlay-Parallel.apk"))
@@ -143,14 +142,6 @@ def verify_special_access(adb):
             raise SetupError("Permission verification failed: " + operation + ". Enable it in TV special app access settings before activation.")
 
 
-def set_boot_receiver(adb, enabled):
-    action = "enable" if enabled else "disable"
-    expected = "enabled" if enabled else "disabled"
-    result = adb.shell("pm", action, "--user", "0", BOOT_RECEIVER)
-    if not re.search(r"new state:\s*" + expected + r"\b", result):
-        raise SetupError("Cannot verify boot receiver state; stop before configuring or rebooting this installation")
-
-
 def install(adb, device, bundle, companions):
     selected = list(REQUIRED)
     for package, filename in companion_files(companions, device["abis"]):
@@ -159,14 +150,9 @@ def install(adb, device, bundle, companions):
         else:
             selected.append((package, filename))
     verify_files(bundle, [filename for _, filename in selected])
-    already_active = is_home(current_home(adb), HOME)
     for package, filename in selected:
         print("Installing", filename)
         adb.run("install", "--user", "0", "-r", str((bundle / filename).resolve()))
-        if package == HOME and not already_active:
-            # Provisioning broadcasts unstop HOME. Prevent duplicate BOOT_COMPLETED
-            # handling until activation, without disabling configuration receivers.
-            set_boot_receiver(adb, False)
     # Android enforces update signatures; never fall back to uninstall or downgrade.
     for operation in ("SYSTEM_ALERT_WINDOW", "GET_USAGE_STATS"):
         adb.shell("cmd", "appops", "set", "--user", "0", OVERLAY, operation, "allow")
@@ -273,7 +259,6 @@ def activate(adb, device, path):
             if state["old_states"][package] is not None:
                 adb.shell("am", "force-stop", "--user", "0", package)
                 set_enabled(adb, package, 3)
-        set_boot_receiver(adb, True)
         state["stage"] = "active"
         save_state(path, state)
     except SetupError as exc:

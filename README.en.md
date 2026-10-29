@@ -1,6 +1,6 @@
 # Lightframe TV
 
-[中文](README.md) · [v0.2.0 downloads](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.2.0)
+[中文](README.md) · [v0.2.1 downloads](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.2.1)
 
 A transparent Android TV HOME relay and native overlay. Press Home to switch applications above the current video; startup can follow the last application. Content autoplay depends on the video client.
 
@@ -22,7 +22,7 @@ YouTube/Netflix preflight currently requires configured FlClash VPN, its authent
 
 ## Install
 
-Extract `Lightframe-v0.2.0-setup.zip`, install Python 3.9+ and Android Platform Tools, enable ADB on the TV, then:
+Extract `Lightframe-v0.2.1-setup.zip`, install Python 3.9+ and Android Platform Tools, enable ADB on the TV, then:
 
 ```sh
 adb connect TV_IP:5555

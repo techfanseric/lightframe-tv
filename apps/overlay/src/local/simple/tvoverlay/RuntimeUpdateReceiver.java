@@ -8,6 +8,7 @@ import android.content.Intent;
 public final class RuntimeUpdateReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context context, Intent intent) {
         if (intent == null || !Intent.ACTION_MY_PACKAGE_REPLACED.equals(intent.getAction())) return;
+        if (!LauncherSupport.isDefaultHome(context)) return;
         try {
             context.startForegroundService(new Intent(context, OverlayRuntimeService.class)
                     .setAction("RESTORE"));

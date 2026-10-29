@@ -1,8 +1,8 @@
-# 安装与回退（v0.2.0）
+# 安装与回退（v0.2.1）
 
 ## 1. 下载与准备
 
-Release 提供 `Lightframe-v0.2.0-setup.zip`（两只轻幕 APK、向导、指南、校验），以及 `Lightframe-v0.2.0-companions.zip`（TizenTube ARM32/64、FlClash ARM32/64、MyTV、可选播放守护）。配套包解压到 setup 同一目录，保留其 SHA256SUMS 文件。单独 APK 也同时提供。`third-party-sources.zip` 保存FlClash/MyTV对应源码快照、全部许可证及TizenTube源码下载地址。
+Release 提供 `Lightframe-v0.2.1-setup.zip`（两只轻幕 APK、向导、指南、校验），以及 `Lightframe-v0.2.1-companions.zip`（TizenTube ARM32/64、FlClash ARM32/64、MyTV、可选播放守护）。配套包解压到 setup 同一目录，保留其 SHA256SUMS 文件。单独 APK 也同时提供。`third-party-sources.zip` 保存FlClash/MyTV对应源码快照、全部许可证及TizenTube源码下载地址。
 
 电脑安装 Python 3.9+ 和 [官方 Android Platform Tools](https://developer.android.com/tools/releases/platform-tools)，让 `adb` 在 PATH 中，或设置 ADB 环境变量指向它。Windows PowerShell 使用 `py -3`，macOS/Linux 使用 `python3`。不要在已连接多台设备时省略目标序列号。
 
@@ -16,7 +16,7 @@ python3 scripts/setup.py doctor --serial TV_IP:5555 --bundle .
 python3 scripts/setup.py install --serial TV_IP:5555 --bundle .
 ```
 
-检测为只读，列出设备型号/API/ABI/当前HOME/包状态。安装核对 SHA256SUMS，只安装配套 HOME 和 overlay，尝试授予悬浮窗、使用情况访问及电池优化白名单。受限固件上需自行在电视设置授权。安装过程不自动接管首页、不重启、不清除账号。未激活时会暂时关闭新版开机接收器，避免配置后重启与旧版同时启动；已激活设备的升级不改变它。
+检测为只读，列出设备型号/API/ABI/当前HOME/包状态。安装核对 SHA256SUMS，只安装配套 HOME 和 overlay，尝试授予悬浮窗、使用情况访问及电池优化白名单。受限固件上需自行在电视设置授权。安装过程不自动接管首页、不重启、不清除账号。新版在开机及更新时自行核对默认HOME；未激活时不启动后台服务，无需ADB修改系统组件状态。
 
 配套应用按需选择：
 

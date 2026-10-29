@@ -1,6 +1,6 @@
 # 轻幕 · Lightframe TV
 
-[English](README.en.md) · [下载 v0.2.0](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.2.0) · [安装指南](docs/install.md) · [回退与排错](docs/troubleshooting.md)
+[English](README.en.md) · [下载 v0.2.1](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.2.1) · [安装指南](docs/install.md) · [回退与排错](docs/troubleshooting.md)
 
 **电视围绕正在播放的应用，首页键只唤出轻量覆盖菜单。**
 
@@ -14,7 +14,7 @@
 | --- | --- |
 | ![设置面板](docs/images/dock-settings.png) | ![智能家居面板](docs/images/dock-home.png) |
 
-## v0.2.0 的变化
+## v0.2.1 的变化
 
 - 居中小磁片、各自主题色、无可见入口名称；选中放大 12%，无描边。
 - 底部深色渐隐遮罩，设置／家居面板按内容高度展开，底栏不随展开移动。
@@ -33,7 +33,7 @@ Netflix 的 DRM、设备认证和 Google 服务兼容性需要单独验证。附
 
 ## 最短安装路径
 
-1. 从 Release 下载 `Lightframe-v0.2.0-setup.zip` 并解压。需要电脑上的 Python 3.9+ 与 Android Platform Tools（`adb`）。
+1. 从 Release 下载 `Lightframe-v0.2.1-setup.zip` 并解压。需要电脑上的 Python 3.9+ 与 Android Platform Tools（`adb`）。
 2. 电视打开 ADB，与电脑同一可信局域网；较新系统先用 `adb pair IP:配对端口`，再连接实际调试端口。
 3. 在解压目录执行检测和安装：
 

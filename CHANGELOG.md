@@ -1,6 +1,6 @@
-# v0.2.0 · 2026-10-30
+# v0.2.1 · 2026-10-30
 
-见[发布说明](docs/release-notes-v0.2.0.md)：紧凑覆盖UI、Phosphor Fill、并行包、可回退安装向导、配套开源APK与README图文指南。
+见[发布说明](docs/release-notes-v0.2.1.md)：紧凑覆盖UI、Phosphor Fill、并行包、可回退安装向导、配套开源APK与README图文指南。
 
 # Changelog
 

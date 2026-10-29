@@ -42,8 +42,6 @@ class FakeADB:
                 self.fail_disable = False
                 raise setup.SetupError("simulated vendor failure")
             self.states[args[-1]] = value
-            if args[-1] == setup.BOOT_RECEIVER:
-                return "Component " + args[-1] + " new state: " + ("enabled" if value == 1 else "disabled")
             return "new state"
         if args[:3] == ("cmd", "appops", "get"):
             return args[-1] + ": allow"
@@ -170,32 +168,22 @@ class InstallerTests(unittest.TestCase):
         self.assertFalse(any(c[:3] == ("cmd", "package", "set-home-activity") for c in self.adb.calls))
         self.assertFalse((self.root / "state.json").exists())
 
-    def test_inactive_install_blocks_boot_before_configuring(self):
+    def test_inactive_install_does_not_mutate_packages_or_components(self):
+        original_states = dict(self.adb.states)
+        original_home = self.adb.home
         self.bundle([f for _, f in setup.REQUIRED])
         setup.install(self.adb, self.device, self.root, [])
-        self.assertEqual(self.adb.states[setup.BOOT_RECEIVER], 2)
-        disable = self.adb.calls.index(("pm", "disable", "--user", "0", setup.BOOT_RECEIVER))
-        overlay_install = next(i for i, c in enumerate(self.adb.calls) if c[0] == "install" and "Overlay" in c[-1])
-        self.assertLess(disable, overlay_install)
+        self.assertFalse(any(c[0] == "pm" for c in self.adb.calls))
         self.assertFalse(any(c[:2] == ("am", "force-stop") for c in self.adb.calls))
-        self.assertEqual(self.adb.states[setup.HOME], 0)
-        self.assertEqual(self.adb.states[setup.OVERLAY], 0)
+        self.assertEqual(self.adb.states, original_states)
+        self.assertEqual(self.adb.home, original_home)
 
-    def test_active_upgrade_leaves_boot_receiver_untouched(self):
+    def test_active_upgrade_does_not_mutate_component_state(self):
         self.adb.home = setup.COMPONENT
-        self.adb.states[setup.BOOT_RECEIVER] = 1
         self.bundle([f for _, f in setup.REQUIRED])
         setup.install(self.adb, self.device, self.root, [])
-        self.assertFalse(any(c[0] == "pm" and c[-1] == setup.BOOT_RECEIVER for c in self.adb.calls))
-        self.assertEqual(self.adb.states[setup.BOOT_RECEIVER], 1)
-
-    def test_activation_reenables_boot_after_old_pair_disabled(self):
-        self.adb.states[setup.BOOT_RECEIVER] = 2
-        setup.activate(self.adb, self.device, self.root / "state.json")
-        enabled = self.adb.calls.index(("pm", "enable", "--user", "0", setup.BOOT_RECEIVER))
-        for package in setup.OLD:
-            self.assertGreater(enabled, self.adb.calls.index(("pm", "disable-user", "--user", "0", package)))
-        self.assertEqual(self.adb.states[setup.BOOT_RECEIVER], 1)
+        self.assertFalse(any(c[0] == "pm" for c in self.adb.calls))
+        self.assertEqual(self.adb.home, setup.COMPONENT)
 
     def test_package_state_ignores_preferred_activity_user_headers(self):
         dump = """Preferred Activities User 0:

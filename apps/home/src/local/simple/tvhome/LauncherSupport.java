@@ -14,6 +14,15 @@ public final class LauncherSupport {
     public static final String MANUAL_PROXY_OFF = "manual_proxy_off";
     public static final String ALLOW_STOCK_UNTIL_MS = "allow_stock_until_ms";
     private LauncherSupport() { }
+    /** Inactive parallel installs must not start background services at boot/update. */
+    public static boolean isDefaultHome(Context context) {
+        try {
+            android.content.pm.ResolveInfo resolved=context.getPackageManager().resolveActivity(
+                new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
+            return resolved!=null&&resolved.activityInfo!=null&&"local.simple.tvhome".equals(resolved.activityInfo.packageName);
+        } catch(RuntimeException unavailable) { return false; }
+    }
+
 
     /** Open settings without assuming an OEM package exists. Never changes a setting. */
     public static boolean openSystemSettings(Context context) {
