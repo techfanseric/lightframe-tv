@@ -1,6 +1,6 @@
 # 轻幕 · Lightframe TV
 
-[English](README.en.md) · [下载 v0.2.1](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.2.1) · [安装指南](docs/install.md) · [回退与排错](docs/troubleshooting.md)
+[English](README.en.md) · [下载 v0.2.2](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.2.2) · [安装指南](docs/install.md) · [回退与排错](docs/troubleshooting.md)
 
 **电视围绕正在播放的应用，首页键只唤出轻量覆盖菜单。**
 
@@ -14,7 +14,17 @@
 | --- | --- |
 | ![设置面板](docs/images/dock-settings.png) | ![智能家居面板](docs/images/dock-home.png) |
 
-## v0.2.1 的变化
+## v0.2.2 · 流光启动过渡
+
+准备连接与打开应用时，显示应用标识、缓慢移动的银色细线、固定的状态和操作提示。内容集中在屏幕中上部，底部留空。设置 → **启动过渡** 可选流光、静态或关闭；系统关闭动画时也会静止。
+
+![电视上的流光启动过渡](docs/images/startup-loading-tv.png)
+
+> 上图为目标电视上“启动过渡”预览的真实截图，不是模拟器或合成图。前面的应用栏与面板图片仍是带演示背景的原生模拟器预览。
+
+本版修复启动中息屏、HOME 中继、Clash 短暂切换与重复前台事件造成的误取消。原有网络检查继续生效；目标应用交接后及时退场，返回或首页可取消。详见[启动过渡与截图](docs/startup-loading.md)。
+
+## 日常界面
 
 - 居中小磁片、各自主题色、无可见入口名称；选中放大 12%，无描边。
 - 底部深色渐隐遮罩，设置／家居面板按内容高度展开，底栏不随展开移动。
@@ -33,7 +43,7 @@ Netflix 的 DRM、设备认证和 Google 服务兼容性需要单独验证。附
 
 ## 最短安装路径
 
-1. 从 Release 下载 `Lightframe-v0.2.1-setup.zip` 并解压。需要电脑上的 Python 3.9+ 与 Android Platform Tools（`adb`）。
+1. 从 Release 下载 `Lightframe-v0.2.2-setup.zip` 并解压。需要电脑上的 Python 3.9+ 与 Android Platform Tools（`adb`）。
 2. 电视打开 ADB，与电脑同一可信局域网；较新系统先用 `adb pair IP:配对端口`，再连接实际调试端口。
 3. 在解压目录执行检测和安装：
 
@@ -65,6 +75,7 @@ Windows 可将 `python3` 换为 `py -3`。安装不会自动清数据、卸载�
 
 ## 文档
 
+- [启动过渡、退出边界与真实截图](docs/startup-loading.md)
 - [安装、激活、升级与回退](docs/install.md)
 - [Clash 与配套应用](docs/integrations.md)
 - [Home Assistant 配置及操作边界](docs/home-assistant.md)

@@ -13,6 +13,8 @@ import java.util.*;
 public final class DockPreviewActivity extends Activity {
     @Override public void onCreate(Bundle state){super.onCreate(state);
         getWindow().getDecorView().setSystemUiVisibility(5894);
+        String startup=getIntent().getStringExtra("startup");
+        if(startup!=null){String app=getIntent().getStringExtra("app");boolean netflix="netflix".equals(app),bili="bilibili".equals(app);Drawable logo=netflix?EntryIcons.netflix(this):bili?EntryIcons.bilibili(this):getDrawable(R.drawable.youtube_icon);if(bili)logo.setTint(0xfff483a6);StartupBackdropView backdrop=new StartupBackdropView(this,startup,netflix?"Netflix":bili?"哔哩哔哩":"YouTube",logo,this::finish,this::finish);backdrop.setStatus("正在确认连接");setContentView(backdrop);backdrop.requestFocus();return;}
         FrameLayout stage=new FrameLayout(this);boolean bright=getIntent().getBooleanExtra("bright",false);stage.addView(new Scene(bright));
         TextView caption=new TextView(this);caption.setText("轻幕 / 原生界面预览 · 背景为示意画面");caption.setTextColor(bright?0xff182c37:0xffe3e7ec);caption.setTextSize(14);FrameLayout.LayoutParams note=new FrameLayout.LayoutParams(-2,-2,Gravity.TOP|Gravity.LEFT);note.leftMargin=dp(36);note.topMargin=dp(48);stage.addView(caption,note);
         ClockStripView clock=new ClockStripView(this);FrameLayout.LayoutParams clockLayout=new FrameLayout.LayoutParams(-2,dp(18),Gravity.TOP|Gravity.LEFT);clockLayout.leftMargin=dp(4);clockLayout.topMargin=dp(2);stage.addView(clock,clockLayout);

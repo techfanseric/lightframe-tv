@@ -8,7 +8,7 @@ import java.util.concurrent.*;
 
 /** Launch only after an established VPN, a live FlClash core and a real HTTPS response. */
 final class NetworkReadyGate {
-    interface Listener { void waiting(String status); void ready(int app); void failed(int app,String reason); }
+    interface Listener { void waiting(String status); void startingProxy(); void ready(int app); void failed(int app,String reason); }
     private final Context context;
     private final Listener listener;
     private final Handler main=new Handler(Looper.getMainLooper());
@@ -24,7 +24,7 @@ final class NetworkReadyGate {
         android.util.Log.i("HomeNetwork","waiting app="+AppCatalog.IDS[app]);
         String issue=app==2?GoogleServicesHealth.issue(context):null;
         if(issue!=null){waiting=false;listener.failed(app,issue);android.util.Log.w("HomeNetwork","blocked netflix: "+issue);return;}
-        LauncherSupport.ensureProxyStarted(context);tick.run();
+        if(LauncherSupport.ensureProxyStarted(context))listener.startingProxy();tick.run();
     }
     void cancel(){generation++;waiting=false;status="";main.removeCallbacks(tick);}
     private boolean vpnConnected(){
@@ -42,7 +42,7 @@ final class NetworkReadyGate {
         if(now-started>=120000){waiting=false;listener.failed(app,"网络未就绪");android.util.Log.w("HomeNetwork","timeout app="+AppCatalog.IDS[app]);return;}
         if(!vpnConnected()){
             status("正在连接 FlClash…");
-            if(now-lastStart>=15000 && now-started<45000){lastStart=now;LauncherSupport.ensureProxyStarted(context);}
+            if(now-lastStart>=15000 && now-started<45000){lastStart=now;if(LauncherSupport.ensureProxyStarted(context))listener.startingProxy();}
             main.postDelayed(this,1500);return;
         }
         status("代理已连接，正在验证网络…");

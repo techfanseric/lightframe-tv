@@ -11,7 +11,7 @@ cat > "$B/AndroidManifest.xml" <<'XML'
 XML
 "$BT/aapt2" compile --dir "$ROOT/apps/overlay/res" -o "$B/resources.zip"
 "$BT/aapt2" link -o "$B/base.apk" -I "$ANDROID" --manifest "$B/AndroidManifest.xml" --custom-package local.simple.tvoverlay --java "$B/gen" "$B/resources.zip"
-javac --release 8 -classpath "$ANDROID" -d "$B/classes" "$B/gen/local/simple/tvoverlay/R.java" "$ROOT/apps/overlay/src/local/simple/tvoverlay/DockPanel.java" "$ROOT/apps/overlay/src/local/simple/tvoverlay/MenuNavigation.java" "$ROOT/apps/overlay/src/local/simple/tvoverlay/ClockStripView.java" "$ROOT/apps/overlay/src/local/simple/tvoverlay/EntryIcons.java" "$ROOT/preview/DockPreviewActivity.java"
+javac --release 8 -classpath "$ANDROID" -d "$B/classes" "$B/gen/local/simple/tvoverlay/R.java" "$ROOT/apps/overlay/src/local/simple/tvoverlay/DockPanel.java" "$ROOT/apps/overlay/src/local/simple/tvoverlay/MenuNavigation.java" "$ROOT/apps/overlay/src/local/simple/tvoverlay/ClockStripView.java" "$ROOT/apps/overlay/src/local/simple/tvoverlay/EntryIcons.java" "$ROOT/apps/overlay/src/local/simple/tvoverlay/LoadingMarkView.java" "$ROOT/apps/overlay/src/local/simple/tvoverlay/StartupThemes.java" "$ROOT/apps/overlay/src/local/simple/tvoverlay/StartupBackdropView.java" "$ROOT/preview/DockPreviewActivity.java"
 jar cf "$B/classes.jar" -C "$B/classes" .
 "$BT/d8" --lib "$ANDROID" --min-api 28 --output "$B/dex" "$B/classes.jar"
 cp "$B/base.apk" "$B/unsigned.apk"

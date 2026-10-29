@@ -85,18 +85,18 @@ public final class LauncherSupport {
         } catch (RuntimeException e) { return false; }
     }
 
-    public static void ensureProxyStarted(Context context) {
+    public static boolean ensureProxyStarted(Context context) {
         try {
-            if (preferences(context).getBoolean(MANUAL_PROXY_OFF, false)) return;
+            if (preferences(context).getBoolean(MANUAL_PROXY_OFF, false)) return false;
             ConnectivityManager cm = (ConnectivityManager)
                     context.getSystemService(Context.CONNECTIVITY_SERVICE);
-            if (cm == null) return;
+            if (cm == null) return false;
             for (Network network : cm.getAllNetworks()) {
                 NetworkCapabilities caps = cm.getNetworkCapabilities(network);
-                if (caps != null && caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) return;
+                if (caps != null && caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) return false;
             }
-            startFlClashQuickAction(context, "START");
-        } catch (RuntimeException ignored) { }
+            return startFlClashQuickAction(context, "START");
+        } catch (RuntimeException ignored) { return false; }
     }
 
     /** REA-verified firmware mapping: HDMI 1/2/3 use input 23/24/25. */

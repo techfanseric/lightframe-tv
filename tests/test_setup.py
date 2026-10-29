@@ -76,6 +76,7 @@ class InstallerTests(unittest.TestCase):
         with self.assertRaises(setup.SetupError):
             setup.arm_variant(["x86_64"])
         arm = dict(setup.companion_files(["all"], ["armeabi-v7a"]))
+        self.assertEqual(arm["local.simple.streamguardobserver"], "PlaybackGuardian-2.11.apk")
         self.assertEqual(arm["com.follow.clash"], "FlClash-0.9.2-armeabi-v7a.apk")
         self.assertEqual(arm["io.gh.reisxd.tizentube.cobalt"], "TizenTube-2.0.3-arm.apk")
 

@@ -14,10 +14,21 @@ import android.widget.TextView;
 public final class MainActivity extends Activity {
     private final Handler handler=new Handler();
     private int attempts;
-    @Override public void onCreate(Bundle state){super.onCreate(state);relay();}
-    @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);attempts=0;relay();}
+    @Override public void onCreate(Bundle state){super.onCreate(state);relay(initialHomeForBoot(state));}
+    private boolean initialHomeForBoot(Bundle state){
+        Intent intent=getIntent();
+        if(intent==null||!Intent.ACTION_MAIN.equals(intent.getAction())||!intent.hasCategory(Intent.CATEGORY_HOME))return false;
+        int boot=android.provider.Settings.Global.getInt(getContentResolver(),android.provider.Settings.Global.BOOT_COUNT,-1);
+        android.content.SharedPreferences prefs=LauncherSupport.preferences(this);
+        boolean first=boot>=0&&prefs.getInt("initial_home_relay_boot",-2)!=boot;
+        // Record even a recreation. A later user-created HOME activity must not
+        // acquire initial-bootstrap semantics after the first relay was seen.
+        if(boot>=0)prefs.edit().putInt("initial_home_relay_boot",boot).apply();
+        return first&&state==null&&!intent.getBooleanExtra("overlay_settings",false);
+    }
+    @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);attempts=0;relay(false);}
     private int requestId;
-    private void relay(){
+    private void relay(boolean firstHomeForBoot){
         final int request=++requestId;
         final boolean[] answered={false};
         android.os.ResultReceiver reply=new android.os.ResultReceiver(handler){
@@ -33,6 +44,9 @@ public final class MainActivity extends Activity {
         Intent command=new Intent("HOME")
             .setComponent(new android.content.ComponentName("local.simple.tvoverlay","local.simple.tvoverlay.OverlayRuntimeService"))
             .putExtra("settings",getIntent().getBooleanExtra("overlay_settings",false)).putExtra("reply",remoteReply)
+            .putExtra("first_home_for_boot",firstHomeForBoot)
+            .putExtra("home_boot_count",android.provider.Settings.Global.getInt(getContentResolver(),android.provider.Settings.Global.BOOT_COUNT,-1))
+            .putExtra("home_relay_elapsed",android.os.SystemClock.elapsedRealtime())
             .putExtra("core_secret",LauncherSupport.preferences(this).getString("core_secret",""));
         handler.postDelayed(()->{if(request==requestId&&!answered[0]&&!isFinishing())fallback();},5000);
         try{startForegroundService(command);}catch(RuntimeException error){answered[0]=true;fallback();}

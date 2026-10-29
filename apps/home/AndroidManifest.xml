@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="local.simple.tvhome" android:versionCode="13" android:versionName="8.5">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="local.simple.tvhome" android:versionCode="14" android:versionName="8.6">
  <permission android:name="local.simple.tvhome.permission.CONTROL_OVERLAY" android:protectionLevel="signature"/>
  <uses-permission android:name="local.simple.tvhome.permission.CONTROL_OVERLAY"/>
  <uses-sdk android:minSdkVersion="28" android:targetSdkVersion="28"/>

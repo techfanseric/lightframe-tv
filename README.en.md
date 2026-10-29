@@ -1,6 +1,6 @@
 # Lightframe TV
 
-[中文](README.md) · [v0.2.1 downloads](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.2.1)
+[中文](README.md) · [v0.2.2 downloads](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.2.2)
 
 A transparent Android TV HOME relay and native overlay. Press Home to switch applications above the current video; startup can follow the last application. Content autoplay depends on the video client.
 
@@ -14,6 +14,14 @@ The images are native emulator renders with an illustrative background and ficti
 
 Version 0.2 adds small themed cards, 12% focus scaling, a bottom gradient, adaptive compact panels, Phosphor Fill content icons, a transparent clock, and an ADB settings-page shortcut. Expanding a panel does not move the dock.
 
+## v0.2.2: quiet startup loading
+
+A silver trace around a small screen, the destination app symbol, and fixed text above the dock area. Settings offers animated, static and off modes; system animation preferences are respected. Network checks remain active in all modes. Back cancels and Home returns to app selection. New foreground events or a bounded fallback dismiss the transition; this is not a video-first-frame detector.
+
+![Real TV capture of the transition preview](docs/images/startup-loading-tv.png)
+
+This image is an actual capture of the target TV running the transition preview. The earlier dock/panel images remain emulator illustrations. Version 0.2.2 also fixes interrupted boot waits and duplicate foreground events. The installed release was accepted on the TV; this iteration did not repeat a physical cold reboot. See [startup and capture details](docs/startup-loading.md).
+
 ## Requirements and limits
 
 Android 9/API 28+, working ADB, overlay and usage-access permissions. Tested on one ARM32 Android 9 Xiaomi TV. Other Android TV/Google TV firmware needs validation; Tizen and webOS cannot install these APKs.
@@ -22,7 +30,7 @@ YouTube/Netflix preflight currently requires configured FlClash VPN, its authent
 
 ## Install
 
-Extract `Lightframe-v0.2.1-setup.zip`, install Python 3.9+ and Android Platform Tools, enable ADB on the TV, then:
+Extract `Lightframe-v0.2.2-setup.zip`, install Python 3.9+ and Android Platform Tools, enable ADB on the TV, then:
 
 ```sh
 adb connect TV_IP:5555
@@ -36,4 +44,4 @@ Use `py -3` on Windows. Modern wireless debugging may require `adb pair` and a d
 
 See the detailed [installation guide](docs/install.md), [integrations](docs/integrations.md), [Home Assistant](docs/home-assistant.md), [compatibility](docs/compatibility.md), [troubleshooting](docs/troubleshooting.md), [build guide](docs/build-release.md) and [third-party notices](docs/third-party.md). Guides are currently in Chinese; commands and package identities are explicit.
 
-The new package pair uses `.dock` IDs. Activating it disables the original Lightframe pair while retaining its data; the recorded previous HOME and package state can be restored. Old encrypted credentials require reconfiguration. Both status strips share one visibility preference. No live blur or screen capture is performed.
+The new package pair uses `.dock` IDs. Activating it disables the original Lightframe pair while retaining its data; the recorded previous HOME and package state can be restored. Old encrypted credentials require reconfiguration. Both status strips share one visibility preference. The app performs no live blur or video capture. An optional read-only ADB screenshot script is provided for device diagnostics.

@@ -24,8 +24,9 @@ public final class OverlayRuntimeService extends Service {
     private static OverlayRuntimeService instance;
     private LauncherOverlay overlay;
     static OverlayRuntimeService current(){return instance;}
-    void requestBoot(){if(overlay!=null)overlay.boot();}
-    void requestHome(boolean settings){if(overlay!=null)overlay.home(settings);}
+    void requestBoot(){if(overlay!=null)overlay.bootFromSystem();}
+    void requestHome(Intent command){if(overlay!=null)overlay.home(command.getBooleanExtra("settings",false),
+        command.getBooleanExtra("first_home_for_boot",false),command.getIntExtra("home_boot_count",-1),command.getLongExtra("home_relay_elapsed",-1));}
     private static final String STOCK = "com.mitv.tvhome";
     private static final Pattern HDMI_PORT = Pattern.compile("HDMI\\s*[-:]?\\s*([1-3])(?![0-9])",
             Pattern.CASE_INSENSITIVE);
@@ -80,8 +81,8 @@ public final class OverlayRuntimeService extends Service {
                 String secret=intent.getStringExtra("core_secret");if(secret!=null&&!secret.isEmpty()&&secret.length()<257)LauncherSupport.preferences(this).edit().putString("core_secret",secret).apply();
                 if(!android.provider.Settings.canDrawOverlays(this)){ResultReceiver missing=intent.getParcelableExtra("reply");if(missing!=null)missing.send(0,null);return START_STICKY;}
                 ResultReceiver reply=intent.getParcelableExtra("reply");if(reply!=null)reply.send(1,null);
-                if("HOME".equals(intent.getAction()))requestHome(intent.getBooleanExtra("settings",false));
-                else if("BOOT".equals(intent.getAction()))requestBoot();
+                if("HOME".equals(intent.getAction()))requestHome(intent);
+                else if("BOOT".equals(intent.getAction())&&overlay!=null)overlay.bootFromSystem();
                 android.util.Log.i("HomeOverlay","runtime handled "+intent.getAction());
             }catch(RuntimeException error){
                 android.util.Log.e("HomeOverlay","runtime command failed",error);

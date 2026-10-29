@@ -90,7 +90,7 @@ def companion_files(names, abis):
     if "mytv" in requested:
         result.append(("top.yogiczy.mytv.tv", "MyTV-2.2.7.apk"))
     if "guardian" in requested:
-        result.append(("local.simple.streamguardobserver", "PlaybackGuardian-2.10.apk"))
+        result.append(("local.simple.streamguardobserver", "PlaybackGuardian-2.11.apk"))
     return result
 
 

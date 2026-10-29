@@ -1,8 +1,8 @@
-# 安装与回退（v0.2.1）
+# 安装与回退（v0.2.2）
 
 ## 1. 下载与准备
 
-Release 提供 `Lightframe-v0.2.1-setup.zip`（两只轻幕 APK、向导、指南、校验），以及 `Lightframe-v0.2.1-companions.zip`（TizenTube ARM32/64、FlClash ARM32/64、MyTV、可选播放守护）。配套包解压到 setup 同一目录，保留其 SHA256SUMS 文件。单独 APK 也同时提供。`third-party-sources.zip` 保存FlClash/MyTV对应源码快照、全部许可证及TizenTube源码下载地址。
+Release 提供 `Lightframe-v0.2.2-setup.zip`（两只轻幕 APK、向导、指南、校验），以及 `Lightframe-v0.2.2-companions.zip`（TizenTube ARM32/64、FlClash ARM32/64、MyTV、可选播放守护）。配套包解压到 setup 同一目录，保留其 SHA256SUMS 文件。单独 APK 也同时提供。`third-party-sources.zip` 保存FlClash/MyTV对应源码快照、全部许可证及TizenTube源码下载地址。
 
 电脑安装 Python 3.9+ 和 [官方 Android Platform Tools](https://developer.android.com/tools/releases/platform-tools)，让 `adb` 在 PATH 中，或设置 ADB 环境变量指向它。Windows PowerShell 使用 `py -3`，macOS/Linux 使用 `python3`。不要在已连接多台设备时省略目标序列号。
 
@@ -63,3 +63,19 @@ python3 scripts/setup.py rollback --serial TV_IP:5555 --bundle .
 使用激活时的同一 `--state` 文件（不指定时使用向导默认位置），恢复记录的HOME和旧轻幕状态，停用新版服务；不卸载、不清Netflix或其他应用数据。切换原生HOME时若厂商阻止命令，在电视设置手动选择默认桌面。状态文件丢失时先用 doctor 查当前状态，不要猜原桌面。
 
 升级新版可重复 install，沿用签名保留数据。只有安装成功且配置验收后再激活；不需要每次重复第三方客户端安装。
+
+## 从 v0.2.1 升级到 v0.2.2
+
+使用同一发布签名，`.dock` 包名不变。下载新版 setup，运行同一个 `install` 命令即可覆盖升级两只轻幕 APK；原配置与已登录视频应用保留。已设置默认轻幕者无需再次 activate，也无需重新导入 HA 或 Clash 凭据。
+
+如果已经安装可选守护 2.10，安装向导会按防覆盖规则跳过它。需要新等待页时，另下载并明确升级：
+
+```sh
+adb -s TV_IP:5555 install -r PlaybackGuardian-2.11.apk
+```
+
+这是可选守护的升级，不是所有电视的安装前置。签名冲突就停止并保留旧版，不卸载、不清数据。升级后确认原无障碍授权仍开启。
+
+设置 → 启动过渡：流光（默认）、静态、关闭。关闭仅关闭视觉过渡，网络检查仍然运行。详见[启动过渡](startup-loading.md)。
+
+回退到旧默认首页仍使用已保存的 `rollback` 记录。它不等于降低当前 APK 版本。若需回退同包名代码，Android 可能拒绝降级；维护者应使用原签名、旧源码和递增 versionCode 构建回退包，不能用卸载代替升级。
