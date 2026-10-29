@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="local.simple.tvoverlay" android:versionCode="33" android:versionName="8.24">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="local.simple.tvoverlay" android:versionCode="40" android:versionName="8.31-dock">
 <uses-sdk android:minSdkVersion="28" android:targetSdkVersion="28"/>
 <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/><uses-permission android:name="android.permission.FOREGROUND_SERVICE"/><uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"/><uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 <uses-permission android:name="local.simple.tvhome.permission.CONTROL_OVERLAY"/>
@@ -6,7 +6,6 @@
 <uses-permission android:name="android.permission.RECORD_AUDIO"/>
 <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
 <application android:label="@string/app_name" android:icon="@drawable/home_icon" android:theme="@android:style/Theme.Material.NoActionBar" android:allowBackup="false" android:usesCleartextTraffic="true">
-<activity android:name=".PreviewActivity" android:exported="true" android:permission="android.permission.DUMP" android:theme="@style/RelayTheme" android:excludeFromRecents="true"/>
 <service android:name=".OverlayRuntimeService" android:exported="true" android:permission="local.simple.tvhome.permission.CONTROL_OVERLAY" android:stopWithTask="false"/>
 
 <receiver android:name=".RuntimeUpdateReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/></intent-filter></receiver>

@@ -35,12 +35,12 @@ public final class MainActivity extends Activity {
             .putExtra("settings",getIntent().getBooleanExtra("overlay_settings",false)).putExtra("reply",remoteReply)
             .putExtra("core_secret",LauncherSupport.preferences(this).getString("core_secret",""));
         handler.postDelayed(()->{if(request==requestId&&!answered[0]&&!isFinishing())fallback();},5000);
-        try{startForegroundService(command);}catch(RuntimeException error){android.util.Log.e("HomeOverlay","Unable to start overlay runtime",error);answered[0]=true;fallback();}
+        try{startForegroundService(command);}catch(RuntimeException error){answered[0]=true;fallback();}
     }
     private void fallback(){
         LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setGravity(Gravity.CENTER);root.setBackgroundColor(0xff111318);
         TextView title=new TextView(this);title.setText("轻幕 · 贴片暂未启动");title.setTextColor(0xffeeeeee);title.setTextSize(24);root.addView(title);
-        Button access=new Button(this);access.setText("允许贴片悬浮显示");access.setOnClickListener(v->{try{startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,android.net.Uri.parse("package:local.simple.tvoverlay")));}catch(RuntimeException e){startActivity(new Intent().setComponent(new android.content.ComponentName("com.xiaomi.mitv.settings","com.xiaomi.mitv.settings.entry.MainActivity")));}});root.addView(access);
+        Button access=new Button(this);access.setText("允许贴片悬浮显示");access.setOnClickListener(v->{try{startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,android.net.Uri.parse("package:local.simple.tvoverlay")));}catch(RuntimeException e){if(!LauncherSupport.openSystemSettings(this))android.widget.Toast.makeText(this,"无法打开授权页面，请从系统设置允许轻幕悬浮显示",android.widget.Toast.LENGTH_SHORT).show();}});root.addView(access);
         for(int i=0;i<AppCatalog.IDS.length;i++){final int app=i;Button b=new Button(this);b.setText(AppCatalog.NAMES[i]);b.setOnClickListener(v->AppCatalog.launch(this,app));root.addView(b);}
         setContentView(root);access.requestFocus();
     }

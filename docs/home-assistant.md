@@ -1,92 +1,30 @@
-# 智能家居
+# Home Assistant
 
-设置行的“智能家居”使用 Lucide `house-plug` 图标，打开原生悬浮控制面板，不切换正在观看的应用或信号源。入口按“房间 → 设备 → 控制与状态”浏览 HA 完整目录，保留离线、禁用和暂未提供实体的设备；没有房间归属的项目放在“未分配房间”，不同家庭的同名房间按 HA 的区域 ID 分开。实体的房间覆盖优先于设备房间。新增设备自动发现，不再受固定 8 项或 32 项列表限制。
+聚焦底部家居磁片才展开快捷面板，每行四项、最多15个实体加“全部设备”。确认进入设备控制页；上键进入控制，返回关闭菜单。与 v0.1.7 的可编辑空间分组不同，本版紧凑面板使用单实体收藏；旧版空间布局与令牌保留在旧应用，不能自动迁移。
 
-快捷区支持“空间 → 位置或设备组 → 功能”：每行一个空间，横向浏览该空间的组；从应用行向上依次进入配置中的空间，不把一个房间拆成多行。空间多于屏幕可容纳的行数时纵向滚动，组超出宽度时横向滚动；每行左右首尾循环。空间行高 44dp，标准宽度每行约四组；空间名固定在横向滚动区左侧，以加粗高对比文字和细竖线区分空间与组；家居区下方用分割线及“操作后保留菜单”提示与应用区分开。打开菜单仍默认聚焦应用行，保留 MRU 和当前应用排除。操作智能家居时保留切换菜单、焦点和滚动位置，状态回读后原位更新，方便连续操作不同组；进入家居控制后取消本次菜单的 15 秒自动收起，按返回键或首页键退出。组内详情关闭后回到原菜单，切换应用仍关闭菜单。家居控制子菜单采用与主菜单一致的羽化遮罩、紧凑列表和焦点高亮；选定设备动作即关闭所有控制子菜单，状态回读后更新主菜单，不重新弹回组内列表。返回键可在执行前回到上一级。
+全部设备按 HA 房间和设备登记信息浏览；离线、禁用、未分配房间和暂无实体的设备仍可见。支持灯、开关、风扇、空调开关/温度、窗帘开关/停止、扫地机器人任务；其他实体仅显示状态。不会因组实体不可用而自动操作供电继电器。
 
-灯光卡片确认键直接控制 HA 的整组实体，长按进入组内明细；空调、窗帘等确认键进入组内功能。组实体不可用时显示真实不可用状态，不回退为逐个控制成员，也不自动连带操作供电继电器。设备操作继续使用固定服务白名单。
+## 配置
 
-“智能家居 → 配置快捷空间”可用遥控器调整空间和横向组的顺序、名称、显示或隐藏。增加空间、增删组、更换控制实体和组内明细通过下方 JSON 导入。配置只保存在电视私有目录；个人预设放在 Git 忽略的 `.local/`，不把家庭设备信息写进源码。未导入 `quick_rows` 的旧连接继续使用原有常用设备快捷行；导入省略该字段保留当前布局，传入空数组清空快捷空间。
-
-旧布局仍可通过“选择常用设备”选择单项，每行最多四项、最多三行，选择数量按屏幕容量限制。空间布局与旧收藏分别保存，刷新目录不会自动新增快捷组或覆盖顺序。
-
-支持空调开关和目标温度、窗帘开关和停止、风扇/开关/灯的开关、扫地机器人开始/暂停/回充。按实际可用操作判断：灯、普通开关和风扇仅有开关两项时，按确认键直接切换；空调始终显示操作子菜单，窗帘、扫地机器人也通过子菜单选择操作。切换空调前重新读取设备状态，再发送开启或关闭指令；新风、灯和普通开关由 HA 切换。状态读取和成功反馈不能代替真人实控验收。菜单打开时刷新状态，关闭后不持续轮询 HA。
-
-传感器和电视暂未支持操作的实体也显示在对应设备里，并标明“仅查看”；不会把未知实体当成电源开关发送指令。设备页和控制页的返回键逐级返回。状态读取使用 REST API；设备、实体和房间登记通过同一非管理员账号的 WebSocket API 读取。连接启动时后台同步一次，进入家居入口或按“刷新”重新同步；切换菜单可见期间每 5 秒刷新状态，登记信息最多每分钟更新一次。登记失败保留应用私有目录中的上次目录并提示，不能当成完整同步成功。
-
-## 连接
-
-建议使用独立的非管理员 HA 用户，为其生成专用访问 token。电视通过 HA REST API 读取状态和调用固定的设备服务，不需要 HA 管理权限，不保存路由器密码。
-
-在 Git 之外准备 JSON，或将它保存到已忽略的 `.local/` 中：
+在 HA 账户安全页创建可撤销的专用长期令牌，优先使用只具有所需家庭权限的账户。把下面配置保存在仓库之外，限制文件权限；替换示例，不要把真实令牌粘贴到聊天、截图、Issue或命令行。
 
 ```json
 {
-  "url": "http://your-ha-host:8123",
-  "token": "your-device-specific-access-token",
+  "url": "http://homeassistant.local:8123",
+  "token": "REPLACE_WITH_YOUR_PRIVATE_TOKEN",
   "controls": [
-    {"entity_id": "climate.bedroom", "name": "主卧空调"},
-    {"entity_id": "cover.west", "name": "西窗帘"}
-  ]
+    {"entity_id": "light.living_room", "name": "客厅灯"}
+  ],
+  "favorites": ["light.living_room"]
 }
 ```
 
 ```sh
-python3 scripts/configure-home-assistant.py "$TV_ADB_SERIAL" /private/path/home-assistant.json
+python3 scripts/configure.py --serial TV_IP:5555 --home-assistant /private/home-assistant.json
 ```
 
-可在连接 JSON 中增加 `quick_rows`。数组顺序表示从应用行向上的空间优先顺序；每个 `groups` 的数组顺序是从左到右：
+URL必须是可从电视访问的服务器根地址；不接受带用户信息、路径、查询参数的URL。脚本不发送家居动作。token以Android Keystore加密存储在新版overlay私有空间；暂存导入文件随后删除。旧版Keystore密钥绑定应用UID，因此重新授权是必需步骤。丢失或更换电视后在HA撤销旧令牌。
 
-```json
-{
-  "quick_rows": [
-    {
-      "name": "客厅",
-      "visible": true,
-      "groups": [
-        {
-          "name": "沙发区灯",
-          "entity_id": "light.sofa_group",
-          "visible": true,
-          "details": ["light.sofa_left", "light.sofa_right"]
-        }
-      ]
-    },
-    {
-      "name": "餐厅",
-      "groups": [{"name": "餐厅灯", "entity_id": "light.dining_group"}]
-    }
-  ]
-}
-```
+可在全部设备内选择快捷项；通过配置文件可固定收藏顺序。设备目录会自动同步，收藏只指向你明确选择的实体。温度显示与命令遵守服务器和设备单位，动作反馈不替代现场验收。
 
-将上述字段合入含 `url`、`token` 和 `controls` 的本地连接文件，再运行原导入脚本。`entity_id` 是整组控制的目标；`details` 是组内明细，不是自动批量执行列表，主实体总会显示在明细首项。多路面板可设 `"open_details": true`，确认键先打开功能列表，避免组名只切换第一路；已有合并实体的灯光组仍直接总控。优先使用 HA 已有灯光组；新增组合应先在 HA 建立合并控制实体，再配置它的 ID。字段支持最多 32 个空间、每空间 64 组、每组 128 个明细实体；名称上限 80 字符。HA 实体删除后卡片仍保留并提示未加载，便于修正配置。
-
-`controls` 作为原有设备别名保留，可用空数组交由 HA 自动发现完整目录。新连接默认不预选快捷项，升级已有连接保留其快捷项。导入广播仅允许持有系统 DUMP 权限的调用方；固定导入文件处理后删除，token 使用 Android Keystore AES-GCM 加密保存到应用私有目录，备份关闭。URL 不跟随重定向，连接失败不尝试控制设备。HTTP 局域网连接仍是明文传输，已有 HTTPS 地址可直接使用且保留证书和主机名校验。
-
-温度从 HA 的实例单位和实体单位读取，统一显示摄氏度；调温指令按 HA 使用的单位和设备步长换算，不修改 HA 的全局单位设置。
-
-家居控制未注册全局语音按键服务。遥控器真人采音、中文识别服务和 Assist 语音管线须单独验证，不能把控制面板接通当作语音已完成。DUMP 权限保护的 `PROBE_REMOTE_VOICE` / `REMOTE_VOICE_RESULT` 广播提供手动的 20 秒采音诊断；须先授权麦克风，统计采样数、峰值、RMS 和分秒变化，不保存或上传音频、不执行任何识别或设备动作。
-
-## 验证
-
-使用 JDK 17 运行独立逻辑检查：
-
-```sh
-mkdir -p .local/smart-home-tests
-javac -d .local/smart-home-tests apps/overlay/src/local/simple/tvoverlay/HomeControl.java apps/overlay/src/local/simple/tvoverlay/HomeCatalog.java apps/overlay/src/local/simple/tvoverlay/HomeTemperature.java apps/overlay/src/local/simple/tvoverlay/MenuNavigation.java apps/overlay/src/local/simple/tvoverlay/HomeSocket.java tests/SmartHomeLogicTest.java tests/HomeSocketTest.java
-java -cp .local/smart-home-tests local.simple.tvoverlay.SmartHomeLogicTest
-java -cp .local/smart-home-tests local.simple.tvoverlay.HomeSocketTest
-```
-
-再按仓库说明运行 `scripts/build.sh`。实机检查应用行默认焦点、上下行切换、首尾循环、返回关闭、当前输入保留、网络失败反馈；实际设备动作应在用户方便时验证。
-
-
-空间布局验证另需桌面版 `org.json`（保存在 `.local/`，不提交依赖）：
-
-```sh
-javac -cp .local/smart-home-tests/json.jar -d .local/smart-home-tests apps/overlay/src/local/simple/tvoverlay/HomeControl.java apps/overlay/src/local/simple/tvoverlay/HomeCatalog.java apps/overlay/src/local/simple/tvoverlay/HomeQuickLayout.java tests/HomeQuickLayoutTest.java
-java -cp .local/smart-home-tests:.local/smart-home-tests/json.jar local.simple.tvoverlay.HomeQuickLayoutTest
-```
-
-`GET_HOME_LAYOUT` 是受 DUMP 权限保护的只读广播，返回当前 `quick_rows`，不包含连接地址或凭据；用于同步前备份和保留电视上调整的顺序、名称与显隐。
+语音采音诊断工具属于开发功能；中文语音识别和Assist控制没有完成通用验证。不要把设备目录连接成功当成语音控制已支持。

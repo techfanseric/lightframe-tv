@@ -15,6 +15,28 @@ public final class LauncherSupport {
     public static final String ALLOW_STOCK_UNTIL_MS = "allow_stock_until_ms";
     private LauncherSupport() { }
 
+    /** Open settings without assuming an OEM package exists. Never changes a setting. */
+    public static boolean openSystemSettings(Context context) {
+        return startSettings(context, new Intent().setComponent(new ComponentName(
+                "com.xiaomi.mitv.settings", "com.xiaomi.mitv.settings.entry.MainActivity")))
+                || startSettings(context, new Intent(android.provider.Settings.ACTION_SETTINGS));
+    }
+
+    /** Xiaomi exposes ADB under Security; other devices normally use Developer options. */
+    public static boolean openAdbSettings(Context context) {
+        return startSettings(context, new Intent().setComponent(new ComponentName(
+                "com.xiaomi.mitv.settings", "com.xiaomi.mitv.settings.entry.SecurityActivity")))
+                || startSettings(context, new Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS))
+                || openSystemSettings(context);
+    }
+
+    private static boolean startSettings(Context context, Intent intent) {
+        try {
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            return true;
+        } catch (RuntimeException unavailable) { return false; }
+    }
+
     public static SharedPreferences preferences(Context context) {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }

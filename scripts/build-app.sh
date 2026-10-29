@@ -18,7 +18,7 @@ KS="${LIGHTFRAME_KEYSTORE:-$ROOT/.local/signing.jks}"
 ALIAS="${LIGHTFRAME_KEY_ALIAS:-tvhome}"
 export LIGHTFRAME_STORE_PASSWORD="${LIGHTFRAME_STORE_PASSWORD:-android}"
 export LIGHTFRAME_KEY_PASSWORD="${LIGHTFRAME_KEY_PASSWORD:-$LIGHTFRAME_STORE_PASSWORD}"
-if [ ! -f "$KS" ]; then
+if [ "${LIGHTFRAME_UNSIGNED:-0}" != "1" ] && [ ! -f "$KS" ]; then
  if [ -n "${LIGHTFRAME_KEYSTORE:-}" ]; then echo 'Configured signing keystore is missing.' >&2; exit 1; fi
  mkdir -p "$ROOT/.local"
  keytool -genkeypair -keystore "$KS" -storepass:env LIGHTFRAME_STORE_PASSWORD -keypass:env LIGHTFRAME_KEY_PASSWORD -alias "$ALIAS" -dname 'CN=Lightframe TV Development' -keyalg RSA -keysize 2048 -validity 10000
@@ -45,6 +45,11 @@ JAVA_OPTS=-Xmx128m "$BT/d8" --lib "$ANDROID" --min-api 28 --output "$BUILD/dex" 
 cp "$BUILD/base.apk" "$BUILD/unsigned.apk"
 (cd "$BUILD/dex" && zip -q -j "$BUILD/unsigned.apk" classes.dex)
 "$BT/zipalign" -f 4 "$BUILD/unsigned.apk" "$BUILD/aligned.apk"
+if [ "${LIGHTFRAME_UNSIGNED:-0}" = "1" ]; then
+ cp "$BUILD/aligned.apk" "$ROOT/dist/${OUTPUT%.apk}-unsigned.apk"
+ echo "$ROOT/dist/${OUTPUT%.apk}-unsigned.apk"
+ exit 0
+fi
 "$BT/apksigner" sign --ks "$KS" --ks-key-alias "$ALIAS" --ks-pass env:LIGHTFRAME_STORE_PASSWORD --key-pass env:LIGHTFRAME_KEY_PASSWORD --out "$ROOT/dist/$OUTPUT" "$BUILD/aligned.apk"
 "$BT/apksigner" verify "$ROOT/dist/$OUTPUT"
 echo "$ROOT/dist/$OUTPUT"

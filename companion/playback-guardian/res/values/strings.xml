@@ -1,0 +1,1 @@
+<resources><string name="observer_description">保留轻幕首页，接管明确的 Netflix 启动失败提示并等待网络；仅关闭 Netflix 内精确匹配的 Google 服务启用弹窗。视频应用前台持续断开 VPN 时有限次数恢复连接。不读取输入内容，不修改账号或登录数据。可随时停用。</string></resources>

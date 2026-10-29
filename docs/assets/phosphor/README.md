@@ -1,0 +1,1 @@
+Phosphor Icons Fill assets, retrieved 2026-10-30 from https://github.com/phosphor-icons/core/tree/main/assets/fill . MIT license retained. SVG path geometry is copied into Android VectorDrawable at 256 × 256 with a light monochrome fill. Used for settings and smart-home panel contents.

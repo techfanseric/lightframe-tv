@@ -58,10 +58,6 @@ final class HomeAssistantClient {
     List<String> favoriteIds(){List<String> ids=new ArrayList<>();try{JSONArray a=new JSONArray(prefs.getString("favorites","[]"));for(int i=0;i<a.length();i++)ids.add(a.getString(i));}catch(Exception ignored){}return ids;}
     List<HomeControl> favorites(){return HomeCatalog.favorites(favoriteIds(),controls());}
     void setFavoriteIds(Collection<String> selected){JSONArray a=new JSONArray();for(String id:new LinkedHashSet<>(selected))a.put(id);prefs.edit().putString("favorites",a.toString()).apply();}
-    boolean hasQuickLayout(){return prefs.contains("quick_rows");}
-    JSONArray quickRows(){try{return new JSONArray(prefs.getString("quick_rows","[]"));}catch(JSONException e){return new JSONArray();}}
-    HomeQuickLayout quickLayout(){try{return new HomeQuickLayout(quickRows());}catch(Exception e){throw new IllegalStateException("Invalid saved layout",e);}}
-    void setQuickRows(JSONArray rows) throws JSONException {new HomeQuickLayout(rows);prefs.edit().putString("quick_rows",rows.toString()).apply();}
     void importConfiguration(JSONObject config) throws Exception {
         String url=config.getString("url").replaceAll("/+$","");URI uri=new URI(url);
         if(!("http".equals(uri.getScheme())||"https".equals(uri.getScheme()))||uri.getHost()==null||uri.getUserInfo()!=null||uri.getQuery()!=null||uri.getFragment()!=null||!(uri.getPath()==null||uri.getPath().isEmpty()))throw new IllegalArgumentException("Invalid server URL");
@@ -69,10 +65,8 @@ final class HomeAssistantClient {
         JSONArray a=config.getJSONArray("controls"),normalized=new JSONArray();Set<String> seen=new HashSet<>();
         if(a.length()>4096)throw new IllegalArgumentException("Too many controls");
         for(int i=0;i<a.length();i++){JSONObject o=a.getJSONObject(i);HomeControl c=new HomeControl(o.getString("entity_id"),o.optString("name"));if(!seen.add(c.id)||c.name.length()>80)throw new IllegalArgumentException("Invalid control");normalized.put(new JSONObject().put("entity_id",c.id).put("name",c.name));}
-        JSONArray rows=config.optJSONArray("quick_rows");if(config.has("quick_rows")&&rows==null)throw new IllegalArgumentException("Invalid quick_rows");if(rows!=null)new HomeQuickLayout(rows);
         String encrypted=encrypt(token);
         SharedPreferences.Editor edit=prefs.edit().putString("url",url).putString("token",encrypted).putString("controls",normalized.toString());
-        if(rows!=null)edit.putString("quick_rows",rows.toString());
         if(!prefs.contains("favorites"))edit.putString("favorites","[]");
         if(!edit.commit())throw new IOException("Cannot store configuration");
     }

@@ -1,0 +1,9 @@
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+ android:description="@string/observer_description"
+ android:accessibilityEventTypes="typeViewClicked|typeViewFocused|typeWindowStateChanged|typeWindowContentChanged|typeWindowsChanged"
+ android:packageNames="local.simple.tvoverlay,local.simple.tvhome,local.simple.tvoverlay.dock,local.simple.tvhome.dock,com.netflix.ninja,io.gh.reisxd.tizentube.cobalt,com.xiaodianshi.tv.yst,top.yogiczy.mytv.tv"
+ android:accessibilityFeedbackType="feedbackGeneric"
+ android:notificationTimeout="100"
+ android:accessibilityFlags="flagIncludeNotImportantViews|flagRetrieveInteractiveWindows|flagReportViewIds"
+ android:canRetrieveWindowContent="true"
+ android:settingsActivity="local.simple.streamguardobserver.MainActivity"/>

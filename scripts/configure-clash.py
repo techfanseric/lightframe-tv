@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
-"""Configure an existing local Clash controller without printing its credential."""
-import argparse,os,subprocess,shlex
+"""Compatibility wrapper for the v0.2 parallel edition."""
+import os,sys
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('serial');p.add_argument('credential_file',type=Path);args=p.parse_args()
-secret=args.credential_file.read_text().strip()
-if not secret or len(secret)>256:raise SystemExit('Invalid controller credential file')
-adb=os.environ.get('ADB','adb');port=os.environ.get('ADB_SERVER_PORT','5037')
-remote=['am','broadcast','-n','local.simple.tvhome/.ConfigReceiver','-a','local.simple.tvhome.CONFIGURE_CORE','--es','secret',secret]
-subprocess.run([adb,'-P',port,'-s',args.serial,'shell',shlex.join(remote)],check=True,stdout=subprocess.DEVNULL)
-print('Controller configured. Reopen HOME when ready.')
+if len(sys.argv)!=3:raise SystemExit("Usage: configure-clash.py SERIAL PRIVATE_CONFIG_FILE")
+os.execv(sys.executable,[sys.executable,str(Path(__file__).with_name("configure.py")),"--serial",sys.argv[1],"--clash-secret",sys.argv[2]])
