@@ -12,11 +12,22 @@ import android.widget.*;
 
 /** Native overlays. Only the temporary loading mark animates; no video decoding or blur. */
 final class LauncherOverlay {
+    /** How long the service waits before it puts the speaker on its channel. */
+    static final long ARC_ESTABLISH_DELAY_MS=3000;
+    /** The gap between two checks that the speaker plays the wanted channel. */
+    static final long ARC_ENSURE_INTERVAL_MS=15000;
+
     private final Service service;
     private final WindowManager wm;
     private final Handler handler=new Handler(Looper.getMainLooper());
     private final DashboardClient dashboard;
     private final java.util.concurrent.ExecutorService usageWorker=java.util.concurrent.Executors.newSingleThreadExecutor();
+    /** The speaker is asked on its own worker, never on the usage worker. */
+    private final java.util.concurrent.ExecutorService arcWorker=java.util.concurrent.Executors.newSingleThreadExecutor();
+    /** The channel the picture asks the speaker for. */
+    private volatile boolean arcRequest;
+    /** True when a channel request has not been handed to the worker yet. */
+    private volatile boolean arcPending;
     private final java.util.concurrent.atomic.AtomicBoolean usageBusy=new java.util.concurrent.atomic.AtomicBoolean();
     private final RecentApps recents;
     private final HomeAssistantClient homeAssistant;
@@ -36,6 +47,8 @@ final class LauncherOverlay {
     private int startupFailedApp=-1;
     private long startupRequestAt,startupDispatchedAt;
     private long proxyGraceUntil,homeRelayGraceUntil;
+    /** When the speaker was last asked to make sure of its channel. */
+    private long lastArcEnsureAt;
     private String lastObservedPackage,startupBaselinePackage,startupObservedPackage;
     private long startupObservedAt;
     private StartupBackdropView fadingStartup;
@@ -74,8 +87,25 @@ final class LauncherOverlay {
         if(closed||!screenOn)return;
         refreshForeground();showChip();
         updateDashboard();
+        ensureArc();
         handler.postDelayed(this,5000);
     }};
+    /**
+     * Checks from time to time that the speaker still plays the channel the
+     * picture asks for, and puts it back when it does not.
+     *
+     * The channel can be changed on the speaker itself or by a cable
+     * renegotiation, so a check that only runs when the picture changes would
+     * leave the sound on the wrong channel.
+     */
+    private void ensureArc(){
+        if(closed||!screenOn)return;
+        long now=SystemClock.elapsedRealtime();
+        if(now-lastArcEnsureAt<ARC_ENSURE_INTERVAL_MS)return;
+        lastArcEnsureAt=now;
+        if(!BoseArc.configured(LauncherSupport.preferences(service).getString(BoseArc.KEY_HOST,"")))return;
+        followArc(arcPictureIsExternal());
+    }
     private void updateDashboard(){
         if(chip!=null)dashboard.readSnapshot(LauncherSupport.preferences(service).getString("core_secret",""),s->{
             if(statusStrip!=null)statusStrip.update(s);
@@ -83,7 +113,7 @@ final class LauncherOverlay {
     }
     private final BroadcastReceiver screen=new BroadcastReceiver(){public void onReceive(Context c,Intent i){
         screenOn=Intent.ACTION_SCREEN_ON.equals(i.getAction());handler.removeCallbacks(poll);
-        if(screenOn){showChip();poll.run();if(!networkGate.isWaiting()&&bootFromSystem())homeRelayGraceUntil=SystemClock.elapsedRealtime()+StartupTransitionPolicy.HOME_RELAY_RETURN_GRACE_MS;}else{smartHome.dismiss();hidePanel();removeChip();pausePendingLaunch();handler.removeCallbacks(homeTransition);}
+        if(screenOn){showChip();poll.run();handler.postDelayed(()->{if(!closed)establishArc();},ARC_ESTABLISH_DELAY_MS);if(!networkGate.isWaiting()&&bootFromSystem())homeRelayGraceUntil=SystemClock.elapsedRealtime()+StartupTransitionPolicy.HOME_RELAY_RETURN_GRACE_MS;}else{smartHome.dismiss();hidePanel();removeChip();pausePendingLaunch();handler.removeCallbacks(homeTransition);}
     }};
     LauncherOverlay(Service s){service=s;dashboard=new DashboardClient(s);recents=new RecentApps(s);homeAssistant=new HomeAssistantClient(s);smartHome=new SmartHomeUi(s,homeAssistant,this::updateHomeStates);android.content.SharedPreferences initial=LauncherSupport.preferences(s);if(!initial.contains("native_status_mode"))initial.edit().putString("native_status_mode","smart").apply();if(!initial.getBoolean("follow_last_default_v1",false))initial.edit().putBoolean("follow_last_default_v1",true).putString("native_default_app","last").apply();String last=LauncherSupport.preferences(s).getString("last_native_app","");if(!last.isEmpty()){foreground=AppCatalog.index(last);if(!initial.contains("last_video_app"))initial.edit().putString("last_video_app",last).apply();}wm=(WindowManager)s.getSystemService(Context.WINDOW_SERVICE);screenOn=((PowerManager)s.getSystemService(Context.POWER_SERVICE)).isInteractive();
         usageWorker.execute(()->{long[] history=recents.readHistoricalUse();handler.post(()->{if(!closed)for(int i=0;i<history.length;i++)recents.record(i,history[i]);});});
@@ -96,6 +126,11 @@ final class LauncherOverlay {
         android.util.Log.i("HomeNetwork","proxy mode="+ProxyMode.mode(s)+" startsFlClash="+ProxyMode.startsFlClash(s)+" requiresVpn="+ProxyMode.requiresVpn(s));
         IntentFilter filter=new IntentFilter(Intent.ACTION_SCREEN_ON);filter.addAction(Intent.ACTION_SCREEN_OFF);s.registerReceiver(screen,filter);
         handler.post(poll);
+        // The speaker is put on the right channel as soon as the service runs.
+        // After a restart the picture is whatever the television restored, and
+        // the speaker has to be told about it rather than waiting for the
+        // first usage event, which can take a while.
+        handler.postDelayed(this::establishArc,ARC_ESTABLISH_DELAY_MS);
         if(homeAssistant.configured())homeAssistant.refresh(snapshot->{if(!closed){updateHomeStates();android.util.Log.i("HomeOverlay","HA catalog connected="+snapshot.connected+" devices="+homeAssistant.catalog().registeredDeviceCount+" rooms="+homeAssistant.catalog().rooms.size()+" entities="+homeAssistant.controls().size()+" favorites="+homeAssistant.favorites().size()+" current="+foreground);}});
     }
     void foreground(String pkg){observeStartupForeground(pkg,System.currentTimeMillis());recordObservedPackage(pkg);int app=AppCatalog.forPackage(pkg);
@@ -363,7 +398,12 @@ final class LauncherOverlay {
      * Keeps the speaker on the channel that matches what the television is
      * showing. The speaker lists the television's ARC input as "TV" and its
      * own HDMI socket as "HDMI_n", so following the picture means picking
-     * the right one of the two. Runs off the main thread.
+     * the right one of the two.
+     *
+     * The speaker is asked for the wanted channel whenever it does not play
+     * it, so a channel that was changed by hand is corrected again. The
+     * request runs off the main thread and never on the usage worker, which
+     * can be busy with a slow system query.
      */
     private void followArc(boolean externalSource){
         android.content.SharedPreferences prefs=LauncherSupport.preferences(service);
@@ -373,11 +413,59 @@ final class LauncherOverlay {
         final String arc=prefs.getString(BoseArc.KEY_ACCOUNT,BoseArc.DEFAULT_ACCOUNT);
         final String hdmi=prefs.getString(BoseArc.KEY_HDMI_ACCOUNT,BoseArc.DEFAULT_HDMI_ACCOUNT);
         final boolean external=externalSource;
-        usageWorker.execute(()->{
+        // The last request wins, so a quick change of picture is not applied
+        // twice in the wrong order.
+        arcRequest=external;
+        arcPending=true;
+        handler.post(this::runArcCheck);
+    }
+    /**
+     * Puts the speaker on the channel that matches the picture, without
+     * waiting for a usage event.
+     *
+     * The television's own player is asked what it is showing; when it does
+     * not answer, the port the vendor recorded last is used. The speaker is
+     * then asked for that channel.
+     */
+    private void establishArc(){
+        if(closed)return;
+        final boolean external=arcPictureIsExternal();
+        android.util.Log.i("HomeOverlay","arc establish external="+external);
+        followArc(external);
+    }
+    /**
+     * True when the picture comes from an attached device rather than from
+     * the television's own applications.
+     */
+    private boolean arcPictureIsExternal(){
+        String live=CurrentApp.foreground(service);
+        if(SignalSource.is(live))return true;
+        int app=AppCatalog.forPackage(live);
+        if(app>=0)return false;
+        // The source player is running as soon as the television shows an
+        // external device, which says more than the port the vendor recorded
+        // last.
+        if(CurrentApp.sourcePlayerRunning(service))return true;
+        // The player is not answering yet, so the port the vendor recorded
+        // last decides. A recorded HDMI port means an external device.
+        return SignalInputs.currentPort(service)>0;
+    }
+    /** Asks the speaker for the wanted channel when it is not on it. */
+    private void runArcCheck(){
+        if(closed||!arcPending)return;
+        arcPending=false;
+        android.content.SharedPreferences prefs=LauncherSupport.preferences(service);
+        String host=prefs.getString(BoseArc.KEY_HOST,"");
+        if(!BoseArc.configured(host))return;
+        final int port=prefs.getInt(BoseArc.KEY_PORT,8090);
+        final String arc=prefs.getString(BoseArc.KEY_ACCOUNT,BoseArc.DEFAULT_ACCOUNT);
+        final String hdmi=prefs.getString(BoseArc.KEY_HDMI_ACCOUNT,BoseArc.DEFAULT_HDMI_ACCOUNT);
+        final boolean external=arcRequest;
+        arcWorker.execute(()->{
             try{
                 String current=BoseArc.currentAccount(host,port);
                 String wanted=BoseArc.target(external,arc,hdmi);
-                if(wanted.equals(current))return;
+                if(BoseArcState.satisfied(current,wanted))return;
                 boolean sent=BoseArc.select(host,port,wanted);
                 android.util.Log.i("HomeOverlay","arc follow external="+external+" from="+current+" to="+wanted+" sent="+sent);
             }catch(RuntimeException ignored){ }
@@ -705,5 +793,5 @@ final class LauncherOverlay {
     private TextView text(String value,int size,int color){TextView t=new TextView(service);t.setText(value);t.setTextSize(size);t.setTextColor(color);t.setTypeface(Typeface.create("sans-serif-medium",0));return t;}
     private GradientDrawable shape(int fill,int border,int radius){GradientDrawable d=new GradientDrawable();d.setColor(fill);d.setCornerRadius(dp(radius));d.setStroke(dp(1),border);return d;}
     private int dp(int n){return Math.round(n*service.getResources().getDisplayMetrics().density);}
-    void close(){closed=true;finishStartupPreview(false);smartHome.close();homeAssistant.close();if(networkGate!=null)networkGate.close();clearStartupTransition();hideNetworkCard();handler.removeCallbacksAndMessages(null);hidePanel();removeChip();if(dialog!=null)dialog.dismiss();dashboard.close();usageWorker.shutdownNow();try{service.unregisterReceiver(screen);}catch(RuntimeException ignored){}}
+    void close(){closed=true;finishStartupPreview(false);smartHome.close();homeAssistant.close();if(networkGate!=null)networkGate.close();clearStartupTransition();hideNetworkCard();handler.removeCallbacksAndMessages(null);hidePanel();removeChip();if(dialog!=null)dialog.dismiss();dashboard.close();usageWorker.shutdownNow();arcWorker.shutdownNow();try{service.unregisterReceiver(screen);}catch(RuntimeException ignored){}}
 }

@@ -108,4 +108,29 @@ final class CurrentApp {
         if (pkg.equals("local.simple.tvoverlay") || pkg.startsWith("local.simple.tvoverlay.")) return false;
         return AppCatalog.forPackage(pkg) >= 0 || SignalSource.is(pkg);
     }
+
+    /**
+     * True when the television's own source player is running.
+     *
+ * The player is started as soon as the television shows an external device,
+ * so its presence says more than the port the vendor recorded last, which
+ * can still name a socket that was used days ago.
+     */
+    static boolean sourcePlayerRunning(Context context) {
+        ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        if (manager == null) return false;
+        try {
+            List<ActivityManager.RunningAppProcessInfo> processes = manager.getRunningAppProcesses();
+            if (processes == null) return false;
+            for (ActivityManager.RunningAppProcessInfo process : processes) {
+                if (process == null || process.pkgList == null) continue;
+                for (String pkg : process.pkgList) {
+                    if (SignalSource.is(pkg)) return true;
+                }
+            }
+        } catch (RuntimeException unavailable) {
+            return false;
+        }
+        return false;
+    }
 }

@@ -31,13 +31,7 @@ final class BoseArc {
 
     /** The account the speaker is playing right now, or an empty string. */
     static String currentAccount(String host, int port) {
-        String xml = get(host, port, "/now_playing");
-        if (xml == null) return "";
-        int index = xml.indexOf("sourceAccount=\"");
-        if (index < 0) return "";
-        int start = index + "sourceAccount=\"".length();
-        int end = xml.indexOf('"', start);
-        return end < 0 ? "" : xml.substring(start, end);
+        return BoseArcState.account(get(host, port, "/now_playing"));
     }
 
     /**
