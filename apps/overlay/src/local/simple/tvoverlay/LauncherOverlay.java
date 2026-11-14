@@ -32,6 +32,8 @@ final class LauncherOverlay {
     private StartupBackdropView startupBackdrop,startupPreview;
     private long startupPreviewAt;
     private int startupRequestApp=-1,startupSequence;
+    /** The application whose network check did not succeed, kept for a retry. */
+    private int startupFailedApp=-1;
     private long startupRequestAt,startupDispatchedAt;
     private long proxyGraceUntil,homeRelayGraceUntil;
     private String lastObservedPackage,startupBaselinePackage,startupObservedPackage;
@@ -58,6 +60,7 @@ final class LauncherOverlay {
         // a cleanup failsafe; after dispatch the same timer is shortened to 2 s.
         if(startupDispatchedAt<=0){
             int target=startupRequestApp;networkGate.cancel();completeAutomaticLaunch();clearStartupTransition();
+            if(target>=0)startupFailedApp=target;
             if(!closed&&screenOn&&target>=0)showNetworkCard("网络未就绪，暂未打开 "+AppCatalog.NAMES[target]);
         }else revealStartedApp();
     };
@@ -87,8 +90,8 @@ final class LauncherOverlay {
         networkGate=new NetworkReadyGate(s,new NetworkReadyGate.Listener(){
             public void waiting(String value){if(closed||!screenOn)return;if(startupBackdrop!=null)startupBackdrop.setStatus(quietStartupStatus(value));else showNetworkCard("连接准备中");showChip();}
             public void startingProxy(){proxyGraceUntil=SystemClock.elapsedRealtime()+StartupTransitionPolicy.PROXY_RETURN_GRACE_MS;}
-            public void ready(int app){hideNetworkCard();launchNow(app);}
-            public void failed(int app,String reason){clearStartupTransition();hideNetworkCard();completeAutomaticLaunch();if(!closed&&screenOn)showNetworkCard(reason+"，暂未打开 "+AppCatalog.NAMES[app]);}
+            public void ready(int app){startupFailedApp=-1;hideNetworkCard();launchNow(app);}
+            public void failed(int app,String reason){startupFailedApp=app;clearStartupTransition();hideNetworkCard();completeAutomaticLaunch();if(!closed&&screenOn)showNetworkCard(reason+"，暂未打开 "+AppCatalog.NAMES[app]);}
         });
         android.util.Log.i("HomeNetwork","proxy mode="+ProxyMode.mode(s)+" startsFlClash="+ProxyMode.startsFlClash(s)+" requiresVpn="+ProxyMode.requiresVpn(s));
         IntentFilter filter=new IntentFilter(Intent.ACTION_SCREEN_ON);filter.addAction(Intent.ACTION_SCREEN_OFF);s.registerReceiver(screen,filter);
@@ -247,7 +250,7 @@ final class LauncherOverlay {
         if(!closed&&screenOn){showChip();if(returnToSettings)settings();}
     }
     private void beginStartupTransition(int app){
-        clearStartupTransition();startupRequestApp=app;startupRequestAt=System.currentTimeMillis();startupDispatchedAt=0;startupBaselinePackage=lastObservedPackage;proxyGraceUntil=0;homeRelayGraceUntil=0;startupObservedAt=0;startupObservedPackage=null;
+        clearStartupTransition();startupRequestApp=app;startupRequestAt=System.currentTimeMillis();startupDispatchedAt=0;startupBaselinePackage=lastObservedPackage;proxyGraceUntil=0;homeRelayGraceUntil=0;startupObservedAt=0;startupObservedPackage=null;startupFailedApp=-1;
         handler.postDelayed(startupExpiry,125000);
         if(closed||!screenOn||"off".equals(startupTheme()))return;
         StartupBackdropView view=new StartupBackdropView(service,startupTheme(),startupAppName(),startupIcon(app),this::cancelPendingLaunch,()->home(false));
@@ -292,22 +295,38 @@ final class LauncherOverlay {
     }
     private void startNetworkWithBaseline(int app){
         final int sequence=startupSequence;final long requestedAt=startupRequestAt;
+        // The network check does not wait for the usage query. The query is a
+        // convenience that tells the transition what was on screen before the
+        // request; it used to hold the whole launch hostage when the system
+        // usage service was slow.
+        networkGate.start(app,SystemClock.elapsedRealtime());
         // Resolve the pre-request foreground before QuickAction can change it.
         // A new service may not have completed its first periodic usage read yet.
         usageWorker.execute(()->{
-            String baseline=null;
-            try{
-                android.app.usage.UsageStatsManager usage=(android.app.usage.UsageStatsManager)service.getSystemService(Context.USAGE_STATS_SERVICE);
-                android.app.usage.UsageEvents events=usage.queryEvents(Math.max(0,requestedAt-10*60*1000L),requestedAt);
-                android.app.usage.UsageEvents.Event event=new android.app.usage.UsageEvents.Event();
-                while(events.hasNextEvent()){events.getNextEvent(event);String pkg=event.getPackageName();
-                    if(event.getEventType()==android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND&&pkg!=null
-                        &&!pkg.equals("local.simple.tvhome")&&!pkg.equals(service.getPackageName())&&!pkg.equals("com.android.systemui")&&!pkg.equals("com.follow.clash"))baseline=pkg;
-                }
-            }catch(RuntimeException ignored){}
-            final String found=baseline;
+            // The query has a deadline: the system usage service may not answer
+            // at all, and this worker is shared with the foreground polling.
+            // A separate thread runs it so a stuck query cannot block the
+            // worker or the launch.
+            final java.util.concurrent.atomic.AtomicReference<String> answer=new java.util.concurrent.atomic.AtomicReference<>();
+            Thread query=new Thread(()->{
+                try{
+                    android.app.usage.UsageStatsManager usage=(android.app.usage.UsageStatsManager)service.getSystemService(Context.USAGE_STATS_SERVICE);
+                    android.app.usage.UsageEvents events=usage.queryEvents(Math.max(0,requestedAt-10*60*1000L),requestedAt);
+                    android.app.usage.UsageEvents.Event event=new android.app.usage.UsageEvents.Event();
+                    String found=null;
+                    while(events.hasNextEvent()){events.getNextEvent(event);String pkg=event.getPackageName();
+                        if(event.getEventType()==android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND&&pkg!=null
+                            &&!pkg.equals("local.simple.tvhome")&&!pkg.equals(service.getPackageName())&&!pkg.equals("com.android.systemui")&&!pkg.equals("com.follow.clash"))found=pkg;
+                    }
+                    answer.set(found);
+                }catch(RuntimeException ignored){}
+            },"lightframe-usage");
+            query.setDaemon(true);
+            query.start();
+            try{query.join(3000);}catch(InterruptedException ignored){}
+            final String found=answer.get();
             handler.post(()->{if(closed||!screenOn||sequence!=startupSequence||startupRequestApp!=app)return;
-                if(found!=null)startupBaselinePackage=found;android.util.Log.i("HomeOverlay","startup baseline="+startupBaselinePackage);networkGate.start(app);
+                if(found!=null)startupBaselinePackage=found;android.util.Log.i("HomeOverlay","startup baseline="+startupBaselinePackage);
             });
         });
     }
@@ -654,9 +673,29 @@ final class LauncherOverlay {
         networkLabel=text(message,17,0xfff0f2f6);box.addView(networkLabel);
         TextView hint=text(networkGate.isWaiting()?"网络就绪后自动打开 · 首页键可选择其他应用":"首页键选择应用或重试",11,0xffaab1bf);networkHint=hint;LinearLayout.LayoutParams h=new LinearLayout.LayoutParams(-2,-2);h.topMargin=dp(10);box.addView(hint,h);
         boolean waiting=networkGate.isWaiting();
+        // A check that did not succeed can be started again without waiting
+        // for the next request.
+        TextView retry=null;
+        if(!waiting&&startupFailedApp>=0){
+            retry=button("重试网络检查",()->retryNetworkCheck());
+            LinearLayout.LayoutParams r=new LinearLayout.LayoutParams(-2,-2);r.topMargin=dp(14);box.addView(retry,r);
+        }
         if(waiting){box.setFocusable(true);box.setFocusableInTouchMode(true);box.setOnKeyListener((v,key,event)->{if(key==KeyEvent.KEYCODE_BACK){if(event.getAction()==KeyEvent.ACTION_UP)cancelPendingLaunch();return true;}return false;});}
-        WindowManager.LayoutParams w=params(dp(440),-2,waiting);w.gravity=Gravity.CENTER;w.x=0;w.y=0;w.setTitle("轻幕 · 等待网络");
-        networkCard=box;try{wm.addView(box,w);if(waiting)box.requestFocus();}catch(RuntimeException e){networkCard=null;}
+        // The card takes the input while it waits, and also when it offers a
+        // retry, so the button can be reached with the remote.
+        boolean focusable=waiting||retry!=null;
+        WindowManager.LayoutParams w=params(dp(440),-2,focusable);w.gravity=Gravity.CENTER;w.x=0;w.y=0;w.setTitle("轻幕 · 等待网络");
+        networkCard=box;try{wm.addView(box,w);if(waiting)box.requestFocus();else if(retry!=null)retry.requestFocus();}catch(RuntimeException e){networkCard=null;}
+    }
+    /** Starts the network check again for the application that did not open. */
+    private void retryNetworkCheck(){
+        int target=startupFailedApp;
+        if(target<0)return;
+        startupFailedApp=-1;
+        hideNetworkCard();
+        android.util.Log.i("HomeNetwork","retry network check app="+AppCatalog.IDS[target]);
+        beginStartupTransition(target);
+        networkGate.start(target,SystemClock.elapsedRealtime());
     }
     private void hideNetworkCard(){if(networkCard!=null){try{wm.removeView(networkCard);}catch(RuntimeException ignored){}networkCard=null;networkLabel=null;networkHint=null;}}
     private void settings(){cancelPendingLaunch();if(panel==null){openSettingsRow=true;showPanel();}else if(panel instanceof DockPanel)((DockPanel)panel).focusInitial(true);}

@@ -26,8 +26,15 @@ final class NetworkReadyGate {
     private String status="";
     NetworkReadyGate(Context c,Listener l){context=c;listener=l;}
     boolean isWaiting(){return waiting;}
-    void start(int target){
-        cancel();app=target;waiting=true;started=SystemClock.elapsedRealtime();lastStart=started;
+    /**
+     * Starts the wait for the given application.
+     *
+     * The budget is taken from the moment the request was made, so a slow
+     * step before this call cannot extend the total wait.
+     */
+    void start(int target){start(target,SystemClock.elapsedRealtime());}
+    void start(int target,long requestedAt){
+        cancel();app=target;waiting=true;started=requestedAt>0?requestedAt:SystemClock.elapsedRealtime();lastStart=started;
         android.util.Log.i("HomeNetwork","waiting app="+AppCatalog.IDS[app]+" mode="+ProxyMode.mode(context));
         if(ProxyMode.OFF.equals(ProxyMode.mode(context))){
             waiting=false;android.util.Log.i("HomeNetwork","proxy disabled; launching directly");listener.ready(app);return;
@@ -39,7 +46,10 @@ final class NetworkReadyGate {
         ConnectivityManager cm=(ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
         if(cm!=null)for(Network n:cm.getAllNetworks()){
             NetworkCapabilities caps=cm.getNetworkCapabilities(n);
-            if(caps!=null&&caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)&&caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET))return true;
+            // A tunnel that is being torn down has no INTERNET capability for
+            // a moment while it is still the transport in use. The transport
+            // alone is enough to know the traffic is going through it.
+            if(caps!=null&&caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN))return true;
         }
         return false;
     }
@@ -47,11 +57,14 @@ final class NetworkReadyGate {
     private final Runnable tick=new Runnable(){public void run(){
         if(closed||!waiting)return;
         long now=SystemClock.elapsedRealtime();
-        if(now-started>=120000){waiting=false;listener.failed(app,"网络未就绪");android.util.Log.w("HomeNetwork","timeout app="+AppCatalog.IDS[app]);return;}
+        if(NetworkWaitPolicy.expired(now,started)){waiting=false;listener.failed(app,"网络未就绪");android.util.Log.w("HomeNetwork","timeout app="+AppCatalog.IDS[app]);return;}
         final boolean direct=!ProxyMode.requiresVpn(context);
         if(!direct&&!vpnConnected()){
             status("正在连接 FlClash…");
-            if(now-lastStart>=15000 && now-started<45000){lastStart=now;if(LauncherSupport.ensureProxyStarted(context))listener.startingProxy();}
+            // The proxy is asked for again while there is budget left. A slow
+            // tunnel used to stop being pulled up after 45 s and the wait then
+            // ran out passively.
+            if(NetworkWaitPolicy.startProxyAgain(now,started,lastStart)){lastStart=now;if(LauncherSupport.ensureProxyStarted(context))listener.startingProxy();}
             main.postDelayed(this,1500);return;
         }
         status(direct?"正在验证网络…":"代理已连接，正在验证网络…");
@@ -63,8 +76,8 @@ final class NetworkReadyGate {
                 String secret=LauncherSupport.preferences(context).getString("core_secret","");
                 boolean coreReady=direct||(!secret.isEmpty()&&request("http://127.0.0.1:9090/version",secret)==200);
                 if(coreReady){
-                    int response=request(target==0?"https://www.youtube.com/generate_204":"https://www.netflix.com/robots.txt",null);
-                    ok=target==0?response==204:response>=200&&response<400;
+                    int response=request(NetworkProbe.url(target),null);
+                    ok=NetworkProbe.reachable(target,response);
                 }
             }catch(Exception ignored){}
             final boolean result=ok;
