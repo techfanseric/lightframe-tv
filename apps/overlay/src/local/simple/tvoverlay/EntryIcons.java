@@ -15,6 +15,7 @@ final class EntryIcons {
     static Drawable iptv(Context c){return c.getDrawable(R.drawable.iptv_symbol).mutate();}
     static Drawable settings(Context c){Drawable d=new BitmapDrawable(c.getResources(),sample(c,R.drawable.settings_entry_generated));d.setTint(0xff29384e);return d;}
     static Drawable home(Context c){return c.getDrawable(R.drawable.smart_home_symbol).mutate();}
+    static Drawable source(Context c){return c.getDrawable(R.drawable.apple_symbol).mutate();}
     static Drawable bilibili(Context c){Drawable d=c.getDrawable(R.drawable.bilibili_symbol_official).mutate();d.setTint(0xfffffafb);return d;}
     static Drawable netflix(Context c){
         Bitmap bitmap=sample(c,R.drawable.netflix_symbol_official);

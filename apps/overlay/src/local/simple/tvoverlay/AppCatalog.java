@@ -14,6 +14,6 @@ final class AppCatalog {
         if(in==null)in=c.getPackageManager().getLaunchIntentForPackage(p);
         if(in!=null)return in.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
     }return null;}
-    static boolean launch(Context c,int i){try{if(i==2){String issue=GoogleServicesHealth.issue(c);if(issue!=null){android.util.Log.w("HomeNetwork","blocked netflix: "+issue);android.widget.Toast.makeText(c,issue+"，暂未打开 Netflix",android.widget.Toast.LENGTH_LONG).show();return false;}}Intent in=intent(c,i);if(in==null)return false;c.startActivity(in);return true;}catch(RuntimeException e){return false;}}
+    static boolean launch(Context c,int i){try{Intent in=intent(c,i);if(in==null)return false;c.startActivity(in);return true;}catch(RuntimeException e){return false;}}
     static String packageName(Context c,int i){Intent in=intent(c,i);return in!=null&&in.getComponent()!=null?in.getComponent().getPackageName():PACKAGES[i][0];}
 }

@@ -25,7 +25,11 @@ public final class ParallelConfigReceiver extends BroadcastReceiver {
   File file=new File(context.getExternalFilesDir(null),"parallel-settings.json");
   try{if(!file.isFile()||file.length()>131072)throw new IOException();byte[] raw=new byte[(int)file.length()];try(DataInputStream in=new DataInputStream(new FileInputStream(file))){in.readFully(raw);}JSONObject data=new JSONObject(new String(raw,java.nio.charset.StandardCharsets.UTF_8));
    SharedPreferences.Editor edit=LauncherSupport.preferences(context).edit();
-   for(String name:new String[]{"core_secret","native_default_app","native_status_mode","last_native_app","last_video_app"})if(data.has(name)){String value=data.getString(name);if(value.length()>256)throw new IOException();edit.putString(name,value);}
+   for(String name:new String[]{"core_secret","native_default_app","native_status_mode","last_native_app","last_video_app","proxy_mode"})if(data.has(name)){String value=data.getString(name);if(value.length()>256)throw new IOException();edit.putString(name,value);}
+   if(data.has("manual_proxy_off"))edit.putBoolean("manual_proxy_off",data.getBoolean("manual_proxy_off"));
+   if(data.has("last_source_port")){int port=data.optInt("last_source_port",-1);if(port<1||port>4)throw new IOException();edit.putInt("last_source_port",port);}
+   for(String name:new String[]{"bose_arc_host","bose_arc_account","bose_hdmi_account"})if(data.has(name)){String value=data.getString(name);if(value.length()>64)throw new IOException();edit.putString(name,value);}
+   if(data.has("bose_arc_port")){int port=data.optInt("bose_arc_port",8090);if(port<1||port>65535)throw new IOException();edit.putInt("bose_arc_port",port);}
    if(data.has("native_boot_enabled"))edit.putBoolean("native_boot_enabled",data.getBoolean("native_boot_enabled"));
    if(data.has("native_launch_boot"))edit.putInt("native_launch_boot",data.getInt("native_launch_boot"));
    if(!edit.commit())throw new IOException();HA

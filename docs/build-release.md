@@ -27,12 +27,12 @@ python3 -m py_compile scripts/setup.py scripts/configure.py scripts/build-parall
 v0.2.1首次公开并行版保留旧版v0.1.7发行记录。新旧版布局不同，升级文档必须明确家居分组迁移限制。
 
 
-v0.2.2 核心版本：Home 8.6 (14)、Overlay 8.34-dock (43)、可选 Guardian 2.11 (13)。已安装签名一致、数据保留的实机升级与窗口交接通过；本轮没有再次执行实机冷重启。
+v0.2.3 核心版本：Home 8.9-dock (18)、Overlay 8.39-dock (49)、可选 Guardian 2.11 (13)。已安装签名一致、数据保留的实机覆盖升级通过，信号源入口、声音跟随与 Netflix 隐藏由用户确认；本轮没有再次执行实机冷重启，开机记忆与冷启动路径经代码审查但未在实机上重新开机验证。
 
 发布包由 `scripts/package-release.py` 生成。先把已签名 APK、PROVENANCE.json、third-party-sources.zip 与 licenses/ 放入独立目录，再执行：
 
 ```sh
-python3 scripts/package-release.py --version v0.2.2 --assets /path/to/release-assets
+python3 scripts/package-release.py --version v0.2.3 --assets /path/to/release-assets
 ```
 
 两个 ZIP 包使用同一份八个 APK 的 SHA256SUMS。BUILD-INFO.json 记录源码提交及自有 APK 版本；RELEASE-SHA256SUMS 校验全部发布附件。不要把个人电视状态或截图目录整个加入发布包。

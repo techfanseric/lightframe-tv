@@ -87,7 +87,7 @@ public final class LauncherSupport {
 
     public static boolean ensureProxyStarted(Context context) {
         try {
-            if (preferences(context).getBoolean(MANUAL_PROXY_OFF, false)) return false;
+            if (!ProxyMode.startsFlClash(context)) return false;
             ConnectivityManager cm = (ConnectivityManager)
                     context.getSystemService(Context.CONNECTIVITY_SERVICE);
             if (cm == null) return false;

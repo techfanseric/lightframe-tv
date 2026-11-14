@@ -2,6 +2,7 @@ package local.simple.tvoverlay;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -32,25 +33,37 @@ public final class DashboardClient implements AutoCloseable {
         public final long up;
         public final long down;
         public final boolean available;
+        /** The proxy mode that produced this sample, so the strip can describe it. */
+        public final String mode;
 
-        private Snapshot(String node, Integer delayMs, long up, long down, boolean available) {
+        private Snapshot(String node, Integer delayMs, long up, long down, boolean available, String mode) {
             this.node = node;
             this.delayMs = delayMs;
             this.up = up;
             this.down = down;
             this.available = available;
+            this.mode = mode;
         }
 
-        public static Snapshot unavailable() {
-            return new Snapshot(null, null, -1, -1, false);
+        public static Snapshot unavailable(String mode) {
+            return new Snapshot(null, null, -1, -1, false, mode);
+        }
+
+        public static Snapshot available(String node, Integer delayMs, long up, long down, String mode) {
+            return new Snapshot(node, delayMs, up, down, true, mode);
         }
     }
 
+    private final android.content.Context context;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
     private final AtomicBoolean busy = new AtomicBoolean();
     private volatile boolean closed;
     private volatile HttpURLConnection activeConnection;
+
+    public DashboardClient(android.content.Context context) {
+        this.context = context.getApplicationContext();
+    }
 
     public void readSnapshot(final String secret, final Callback callback) {
         if (callback == null || closed || !busy.compareAndSet(false, true)) return;
@@ -58,6 +71,15 @@ public final class DashboardClient implements AutoCloseable {
             executor.execute(() -> {
                 Snapshot result;
                 try {
+                    final String mode = ProxyMode.mode(context);
+                    if (ProxyMode.DIRECT.equals(mode)) {
+                        // No local core to ask; the system counters see every byte.
+                        result = deviceSnapshot(mode);
+                        busy.set(false);
+                        final Snapshot direct = result;
+                        main.post(() -> { if (!closed) callback.onSnapshot(direct); });
+                        return;
+                    }
                     if (secret == null || secret.isEmpty()) throw new IOException();
                     JSONObject proxies = new JSONObject(request("/proxies", secret, false))
                             .optJSONObject("proxies");
@@ -65,10 +87,10 @@ public final class DashboardClient implements AutoCloseable {
                     JSONObject traffic = new JSONObject(request("/traffic", secret, true));
                     String node = resolveNode(proxies, chooseGroup(proxies));
                     Integer delay = lastDelay(node == null ? null : proxies.optJSONObject(node));
-                    result = new Snapshot(node, delay, nonnegative(traffic, "up"),
-                            nonnegative(traffic, "down"), true);
+                    result = Snapshot.available(node, delay, nonnegative(traffic, "up"),
+                            nonnegative(traffic, "down"), mode);
                 } catch (Exception ignored) {
-                    result = Snapshot.unavailable();
+                    result = Snapshot.unavailable(ProxyMode.mode(context));
                 } finally {
                     busy.set(false);
                 }
@@ -81,6 +103,32 @@ public final class DashboardClient implements AutoCloseable {
             busy.set(false);
         }
     }
+
+    /** Difference the system counters into a per-second rate. */
+    private Snapshot deviceSnapshot(String mode) {
+        long now = SystemClock.elapsedRealtime();
+        long received = DeviceTraffic.receivedBytes();
+        long sent = DeviceTraffic.sentBytes();
+        if (received < 0 || sent < 0) return Snapshot.unavailable(mode);
+        synchronized (this) {
+            if (lastSampleAt == 0) {
+                lastSampleAt = now;
+                lastReceived = received;
+                lastSent = sent;
+                return Snapshot.available(null, null, 0, 0, mode);
+            }
+            long elapsed = Math.max(1, now - lastSampleAt);
+            long down = Math.max(0, received - lastReceived) * 1000L / elapsed;
+            long up = Math.max(0, sent - lastSent) * 1000L / elapsed;
+            lastSampleAt = now;
+            lastReceived = received;
+            lastSent = sent;
+            android.util.Log.i("HomeNetwork","device traffic up="+up+" down="+down+" rxTotal="+received+" txTotal="+sent+" uid="+DeviceTraffic.uidBytes()+" mode="+mode);
+            return Snapshot.available(null, null, up, down, mode);
+        }
+    }
+
+    private long lastSampleAt, lastReceived, lastSent;
 
     private String request(String path, String secret, boolean firstLine) throws Exception {
         if (closed) throw new IOException();

@@ -6,7 +6,14 @@ import android.os.*;
 import java.net.*;
 import java.util.concurrent.*;
 
-/** Launch only after an established VPN, a live FlClash core and a real HTTPS response. */
+/**
+ * Launch only after a real HTTPS response.
+ *
+ * In AUTO the response must additionally travel over an established VPN with a
+ * live FlClash core. In DIRECT the upstream network (a router, for example)
+ * already proxies the traffic, so only the target site is probed. In OFF
+ * nothing is probed at all.
+ */
 final class NetworkReadyGate {
     interface Listener { void waiting(String status); void startingProxy(); void ready(int app); void failed(int app,String reason); }
     private final Context context;
@@ -21,9 +28,10 @@ final class NetworkReadyGate {
     boolean isWaiting(){return waiting;}
     void start(int target){
         cancel();app=target;waiting=true;started=SystemClock.elapsedRealtime();lastStart=started;
-        android.util.Log.i("HomeNetwork","waiting app="+AppCatalog.IDS[app]);
-        String issue=app==2?GoogleServicesHealth.issue(context):null;
-        if(issue!=null){waiting=false;listener.failed(app,issue);android.util.Log.w("HomeNetwork","blocked netflix: "+issue);return;}
+        android.util.Log.i("HomeNetwork","waiting app="+AppCatalog.IDS[app]+" mode="+ProxyMode.mode(context));
+        if(ProxyMode.OFF.equals(ProxyMode.mode(context))){
+            waiting=false;android.util.Log.i("HomeNetwork","proxy disabled; launching directly");listener.ready(app);return;
+        }
         if(LauncherSupport.ensureProxyStarted(context))listener.startingProxy();tick.run();
     }
     void cancel(){generation++;waiting=false;status="";main.removeCallbacks(tick);}
@@ -40,29 +48,29 @@ final class NetworkReadyGate {
         if(closed||!waiting)return;
         long now=SystemClock.elapsedRealtime();
         if(now-started>=120000){waiting=false;listener.failed(app,"网络未就绪");android.util.Log.w("HomeNetwork","timeout app="+AppCatalog.IDS[app]);return;}
-        if(!vpnConnected()){
+        final boolean direct=!ProxyMode.requiresVpn(context);
+        if(!direct&&!vpnConnected()){
             status("正在连接 FlClash…");
             if(now-lastStart>=15000 && now-started<45000){lastStart=now;if(LauncherSupport.ensureProxyStarted(context))listener.startingProxy();}
             main.postDelayed(this,1500);return;
         }
-        status("代理已连接，正在验证网络…");
+        status(direct?"正在验证网络…":"代理已连接，正在验证网络…");
         if(probing){main.postDelayed(this,1500);return;}
         probing=true;final int request=generation;
         worker.execute(()->{
-            boolean ok=false;String failure=null;final int target=app;
+            boolean ok=false;final int target=app;
             try{
                 String secret=LauncherSupport.preferences(context).getString("core_secret","");
-                if(!secret.isEmpty()&&request("http://127.0.0.1:9090/version",secret)==200){
+                boolean coreReady=direct||(!secret.isEmpty()&&request("http://127.0.0.1:9090/version",secret)==200);
+                if(coreReady){
                     int response=request(target==0?"https://www.youtube.com/generate_204":"https://www.netflix.com/robots.txt",null);
                     ok=target==0?response==204:response>=200&&response<400;
-                    if(ok&&target==2){failure=GoogleServicesHealth.probe(context);ok=failure==null;}
                 }
             }catch(Exception ignored){}
-            final boolean result=ok;final String googleFailure=failure;
+            final boolean result=ok;
             main.post(()->{
                 probing=false;if(closed||!waiting||request!=generation)return;
-                if(googleFailure!=null){waiting=false;listener.failed(app,googleFailure);android.util.Log.w("HomeNetwork","blocked netflix: "+googleFailure);}
-                else if(result&&vpnConnected()){
+                if(result&&(direct||vpnConnected())){
                     waiting=false;android.util.Log.i("HomeNetwork","ready app="+AppCatalog.IDS[app]+" elapsedMs="+(SystemClock.elapsedRealtime()-started));listener.ready(app);
                 }else{status("正在等待外网可用…");main.postDelayed(tick,2500);}
             });

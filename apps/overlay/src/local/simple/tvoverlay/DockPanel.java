@@ -23,7 +23,13 @@ import java.util.List;
 final class DockPanel extends LinearLayout {
     static final class App {
         final String title, subtitle; final Drawable icon; final Runnable open;
-        App(String title,String subtitle,Drawable icon,Runnable open){this.title=title;this.subtitle=subtitle;this.icon=icon;this.open=open;}
+        /** Tile colour, only used when {@link #tinted} is set. */
+        final int color;
+        /** True when the tile carries its own colour rather than the one of its kind. */
+        final boolean tinted;
+        App(String title,String subtitle,Drawable icon,Runnable open){this(title,subtitle,icon,open,0,false);}
+        App(String title,String subtitle,Drawable icon,Runnable open,int color){this(title,subtitle,icon,open,color,true);}
+        App(String title,String subtitle,Drawable icon,Runnable open,int color,boolean tinted){this.title=title;this.subtitle=subtitle;this.icon=icon;this.open=open;this.color=color;this.tinted=tinted;}
     }
     private final Runnable interaction,close;
     private final int tileWidth;
@@ -35,8 +41,8 @@ final class DockPanel extends LinearLayout {
     private int category; // 0: apps, 1: settings, 2: home
     private boolean ready;
 
-    DockPanel(Context context,List<App> apps,View[] settings,View[] home,Runnable interaction,Runnable close){
-        super(context);int count=apps.size()+2;int available=Math.min(dp(940),getResources().getDisplayMetrics().widthPixels-dp(24))-dp(48);tileWidth=Math.min(dp(116),(available-dp(16)*(count-1))/count);this.interaction=interaction;this.close=close;this.settingsControls=settings;this.homeControls=home;
+    DockPanel(Context context,List<App> entries,View[] settings,View[] home,Runnable interaction,Runnable close){
+        super(context);int count=entries.size()+2;int available=Math.min(dp(940),getResources().getDisplayMetrics().widthPixels-dp(24))-dp(48);tileWidth=Math.min(dp(116),(available-dp(16)*(count-1))/count);this.interaction=interaction;this.close=close;this.settingsControls=settings;this.homeControls=home;
         setId(R.id.lightframe_dock);setOrientation(VERTICAL);setPadding(dp(24),dp(80),dp(24),dp(42));
         setWillNotDraw(false);
         setClipChildren(false);setClipToPadding(false);
@@ -47,19 +53,20 @@ final class DockPanel extends LinearLayout {
         details.addView(settingsPanel,new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM));details.addView(homePanel,new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM));
         LinearLayout row=new LinearLayout(context);row.setGravity(Gravity.CENTER);row.setClipChildren(false);row.setClipToPadding(false);
         addView(row,new LayoutParams(-1,dp(68)));
-        dock=new View[apps.size()+2];
-        for(int i=0;i<apps.size();i++){
-            App app=apps.get(i);View tile=appTile(app.title,app.subtitle,app.icon,appColor(app.title));dock[i]=tile;
+        dock=new View[entries.size()+2];
+        for(int i=0;i<entries.size();i++){
+            App app=entries.get(i);View tile=appTile(app.title,app.subtitle,app.icon,DockColors.tileColor(app.tinted,app.color,app.title));dock[i]=tile;
             tile.setOnClickListener(v->app.open.run());bindCategory(tile,0);addDock(row,tile,i);
         }
         settingsTile=appTile("设置","",EntryIcons.settings(context),0xffa5b3c8);
         homeTile=appTile("智能家居","",EntryIcons.home(context),0xffb9742c);
-        dock[apps.size()]=settingsTile;dock[apps.size()+1]=homeTile;
+        dock[entries.size()]=settingsTile;dock[entries.size()+1]=homeTile;
         bindCategory(settingsTile,1);bindCategory(homeTile,2);
         settingsTile.setOnClickListener(v->enterControls(1));homeTile.setOnClickListener(v->enterControls(2));
-        addDock(row,settingsTile,apps.size());addDock(row,homeTile,apps.size()+1);
+        addDock(row,settingsTile,entries.size());addDock(row,homeTile,entries.size()+1);
         for(int i=0;i<dock.length;i++){
-            View tile=dock[i];tile.setNextFocusLeftId(dock[MenuNavigation.wrap(i,-1,dock.length)].getId());tile.setNextFocusRightId(dock[MenuNavigation.wrap(i,1,dock.length)].getId());
+            View tile=dock[i];
+            tile.setNextFocusLeftId(dock[MenuNavigation.wrap(i,-1,dock.length)].getId());tile.setNextFocusRightId(dock[MenuNavigation.wrap(i,1,dock.length)].getId());
             tile.setNextFocusDownId(tile.getId());tile.setNextFocusUpId(tile.getId());
         }
         wireControls(settings,4,settingsTile);wireControls(home,4,homeTile);
@@ -73,7 +80,6 @@ final class DockPanel extends LinearLayout {
         canvas.drawRect(0,top,getWidth(),getHeight(),scrimPaint);
     }
     private void addDock(LinearLayout row,View tile,int index){LayoutParams cell=new LayoutParams(tileWidth,-1);if(index>0)cell.leftMargin=dp(16);row.addView(tile,cell);}
-    private static int appColor(String title){if("YouTube".equals(title))return 0xfff5f4f1;if("Netflix".equals(title))return 0xff17171b;if("哔哩哔哩".equals(title))return 0xffed5188;return 0xff1b6773;}
     private View appTile(String title,String subtitle,Drawable icon,int color){
         LinearLayout tile=new LinearLayout(getContext());tile.setId(View.generateViewId());tile.setGravity(Gravity.CENTER);tile.setPadding(dp(16),dp(14),dp(16),dp(14));
         tile.setFocusable(true);tile.setFocusableInTouchMode(true);tile.setDefaultFocusHighlightEnabled(false);tile.setClickable(true);

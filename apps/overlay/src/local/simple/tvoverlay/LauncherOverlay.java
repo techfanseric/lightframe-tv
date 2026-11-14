@@ -15,7 +15,7 @@ final class LauncherOverlay {
     private final Service service;
     private final WindowManager wm;
     private final Handler handler=new Handler(Looper.getMainLooper());
-    private final DashboardClient dashboard=new DashboardClient();
+    private final DashboardClient dashboard;
     private final java.util.concurrent.ExecutorService usageWorker=java.util.concurrent.Executors.newSingleThreadExecutor();
     private final java.util.concurrent.atomic.AtomicBoolean usageBusy=new java.util.concurrent.atomic.AtomicBoolean();
     private final RecentApps recents;
@@ -41,12 +41,16 @@ final class LauncherOverlay {
     private View settingsFirst;
     private boolean menuLoading,openSettingsRow;
     private int panelRequest;
+    /** The sources read when the panel was last opened, used for their names. */
+    private java.util.List<SignalInputs.Port> knownSources=java.util.Collections.emptyList();
     private NetworkReadyGate networkGate;
     private boolean automaticLaunch;
     private long automaticSystemStartedAt=-1;
     private StatusStripView statusStrip;
     private int foreground=-1;
     private boolean screenOn=true,closed;
+    /** True while the TV's own HDMI player owns the screen. */
+    private boolean sourceMode;
     private AlertDialog dialog;
     private final Runnable previewExpiry=()->finishStartupPreview(true);
     private final Runnable startupExpiry=()->{
@@ -78,7 +82,7 @@ final class LauncherOverlay {
         screenOn=Intent.ACTION_SCREEN_ON.equals(i.getAction());handler.removeCallbacks(poll);
         if(screenOn){showChip();poll.run();if(!networkGate.isWaiting()&&bootFromSystem())homeRelayGraceUntil=SystemClock.elapsedRealtime()+StartupTransitionPolicy.HOME_RELAY_RETURN_GRACE_MS;}else{smartHome.dismiss();hidePanel();removeChip();pausePendingLaunch();handler.removeCallbacks(homeTransition);}
     }};
-    LauncherOverlay(Service s){service=s;recents=new RecentApps(s);homeAssistant=new HomeAssistantClient(s);smartHome=new SmartHomeUi(s,homeAssistant,this::updateHomeStates);android.content.SharedPreferences initial=LauncherSupport.preferences(s);if(!initial.contains("native_status_mode"))initial.edit().putString("native_status_mode","smart").apply();if(!initial.getBoolean("follow_last_default_v1",false))initial.edit().putBoolean("follow_last_default_v1",true).putString("native_default_app","last").apply();String last=LauncherSupport.preferences(s).getString("last_native_app","");if(!last.isEmpty()){foreground=AppCatalog.index(last);if(!initial.contains("last_video_app"))initial.edit().putString("last_video_app",last).apply();}wm=(WindowManager)s.getSystemService(Context.WINDOW_SERVICE);screenOn=((PowerManager)s.getSystemService(Context.POWER_SERVICE)).isInteractive();
+    LauncherOverlay(Service s){service=s;dashboard=new DashboardClient(s);recents=new RecentApps(s);homeAssistant=new HomeAssistantClient(s);smartHome=new SmartHomeUi(s,homeAssistant,this::updateHomeStates);android.content.SharedPreferences initial=LauncherSupport.preferences(s);if(!initial.contains("native_status_mode"))initial.edit().putString("native_status_mode","smart").apply();if(!initial.getBoolean("follow_last_default_v1",false))initial.edit().putBoolean("follow_last_default_v1",true).putString("native_default_app","last").apply();String last=LauncherSupport.preferences(s).getString("last_native_app","");if(!last.isEmpty()){foreground=AppCatalog.index(last);if(!initial.contains("last_video_app"))initial.edit().putString("last_video_app",last).apply();}wm=(WindowManager)s.getSystemService(Context.WINDOW_SERVICE);screenOn=((PowerManager)s.getSystemService(Context.POWER_SERVICE)).isInteractive();
         usageWorker.execute(()->{long[] history=recents.readHistoricalUse();handler.post(()->{if(!closed)for(int i=0;i<history.length;i++)recents.record(i,history[i]);});});
         networkGate=new NetworkReadyGate(s,new NetworkReadyGate.Listener(){
             public void waiting(String value){if(closed||!screenOn)return;if(startupBackdrop!=null)startupBackdrop.setStatus(quietStartupStatus(value));else showNetworkCard("连接准备中");showChip();}
@@ -86,14 +90,15 @@ final class LauncherOverlay {
             public void ready(int app){hideNetworkCard();launchNow(app);}
             public void failed(int app,String reason){clearStartupTransition();hideNetworkCard();completeAutomaticLaunch();if(!closed&&screenOn)showNetworkCard(reason+"，暂未打开 "+AppCatalog.NAMES[app]);}
         });
+        android.util.Log.i("HomeNetwork","proxy mode="+ProxyMode.mode(s)+" startsFlClash="+ProxyMode.startsFlClash(s)+" requiresVpn="+ProxyMode.requiresVpn(s));
         IntentFilter filter=new IntentFilter(Intent.ACTION_SCREEN_ON);filter.addAction(Intent.ACTION_SCREEN_OFF);s.registerReceiver(screen,filter);
         handler.post(poll);
         if(homeAssistant.configured())homeAssistant.refresh(snapshot->{if(!closed){updateHomeStates();android.util.Log.i("HomeOverlay","HA catalog connected="+snapshot.connected+" devices="+homeAssistant.catalog().registeredDeviceCount+" rooms="+homeAssistant.catalog().rooms.size()+" entities="+homeAssistant.controls().size()+" favorites="+homeAssistant.favorites().size()+" current="+foreground);}});
     }
     void foreground(String pkg){observeStartupForeground(pkg,System.currentTimeMillis());recordObservedPackage(pkg);int app=AppCatalog.forPackage(pkg);
-        if(app>=0){foreground=app;recents.record(app,System.currentTimeMillis());LauncherSupport.preferences(service).edit().putString("last_native_app",AppCatalog.IDS[app]).putString("last_video_app",AppCatalog.IDS[app]).apply();showChip();}
+        if(app>=0){sourceMode=false;foreground=app;recents.record(app,System.currentTimeMillis());LauncherSupport.preferences(service).edit().putString("last_native_app",AppCatalog.IDS[app]).putString("last_video_app",AppCatalog.IDS[app]).apply();showChip();}
         else if(pkg!=null&&!pkg.equals(service.getPackageName())&&!pkg.equals("local.simple.tvhome")&&!pkg.equals("com.android.systemui")){
-            foreground=-1;hidePanel();showChip();
+            sourceMode=SignalSource.is(pkg);foreground=-1;hidePanel();showChip();
         }
     }
     private long lastUsageRead,lastLaunchAt;
@@ -101,6 +106,7 @@ final class LauncherOverlay {
         if(closed||!usageBusy.compareAndSet(false,true))return;
         usageWorker.execute(()->{
             Integer found=null;long observedAt=0;String foundPackage=null;
+            boolean foundSource=false;
             try {
                 android.app.usage.UsageStatsManager usage=(android.app.usage.UsageStatsManager)service.getSystemService(Context.USAGE_STATS_SERVICE);
                 long now=System.currentTimeMillis();android.app.usage.UsageEvents events=usage.queryEvents(lastUsageRead==0?now-10*60*1000L:lastUsageRead,now);
@@ -109,12 +115,17 @@ final class LauncherOverlay {
                     if(event.getEventType()==android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND && pkg!=null
                         && !pkg.equals("local.simple.tvhome") && !pkg.equals(service.getPackageName()) && !pkg.equals("com.android.systemui")){last=pkg;observedAt=event.getTimeStamp();}
                 }
-                lastUsageRead=now-1000;if(last!=null){found=AppCatalog.forPackage(last);foundPackage=last;}
+                lastUsageRead=now-1000;if(last!=null){found=AppCatalog.forPackage(last);foundPackage=last;foundSource=SignalSource.is(last);}
             }catch(RuntimeException ignored){}
-            final Integer result=found;final long observationTime=observedAt;final String observedPackage=foundPackage;usageBusy.set(false);
-            handler.post(()->{if(closed||result==null)return;observeStartupForeground(observedPackage,observationTime);recordObservedPackage(observedPackage);if(observationTime<lastLaunchAt)return;boolean changed=foreground!=result;foreground=result;
+            final Integer result=found;final long observationTime=observedAt;final String observedPackage=foundPackage;final boolean resultSource=foundSource;usageBusy.set(false);
+            handler.post(()->{if(closed||result==null)return;observeStartupForeground(observedPackage,observationTime);recordObservedPackage(observedPackage);if(observationTime<lastLaunchAt)return;boolean wasSource=sourceMode;boolean changed=foreground!=result||sourceMode!=resultSource;foreground=result;sourceMode=resultSource;
                 if(foreground>=0){recents.record(foreground,observationTime);LauncherSupport.preferences(service).edit().putString("last_video_app",AppCatalog.IDS[foreground]).apply();}
                 LauncherSupport.preferences(service).edit().putString("last_native_app",foreground<0?"":AppCatalog.IDS[foreground]).apply();
+                android.util.Log.i("HomeOverlay","foreground="+foreground+" sourceMode="+sourceMode+" pkg="+observedPackage);
+                // The picture decides where the sound belongs: the TV's own
+                // apps play through the speaker's ARC input, an external
+                // source plays through the speaker's HDMI socket.
+                if(wasSource!=sourceMode)followArc(sourceMode);
                 showChip();
                 if(changed&&panel!=null){hidePanel();showPanel();}
             });
@@ -149,9 +160,37 @@ final class LauncherOverlay {
         int boot=android.provider.Settings.Global.getInt(service.getContentResolver(),android.provider.Settings.Global.BOOT_COUNT,-1);
         if(boot>=0 && p.getInt("native_launch_boot",-2)!=boot && p.getBoolean("native_boot_enabled",true)){
             if(automaticLaunch)return true;
-            automaticLaunch=true;automaticSystemStartedAt=fromSystem?SystemClock.elapsedRealtime():-1;launch(StartupChoice.resolve(p.getString("native_default_app","last"),p.getString("last_video_app",""),recents.latest(),AppCatalog.IDS));return true;
+            automaticLaunch=true;automaticSystemStartedAt=fromSystem?SystemClock.elapsedRealtime():-1;
+            int target=StartupChoice.resolve(p.getString("native_default_app","last"),p.getString("last_video_app",""),recents.latest(),AppCatalog.IDS);
+            // The takeover was switched off, so nothing is opened.
+            if(target<0)return true;
+            // An application that is hidden must not be opened at boot.
+            if(target>=0&&!AppVisibility.visible(service,target))target=visibleFallback();
+            if(target==StartupChoice.SOURCE)launchSource(sourceMemoryPort());
+            else launch(target);
+            return true;
         }
         return false;
+    }
+    /** The source port that was last used, or the current one when unknown. */
+    private int sourceMemoryPort(){
+        int remembered=LauncherSupport.preferences(service).getInt("last_source_port",-1);
+        if(remembered>=1&&remembered<=SignalInputs.MAX_PORTS)return remembered;
+        int current=SignalInputs.currentPort(service);
+        return current>0?current:1;
+    }
+    /** The applications that may be opened, in their catalogue order. */
+    private String[] visibleAppIds(){
+        java.util.List<String> ids=new java.util.ArrayList<>();
+        for(int app=0;app<AppCatalog.IDS.length;app++)if(AppVisibility.visible(service,app))ids.add(AppCatalog.IDS[app]);
+        return ids.toArray(new String[0]);
+    }
+    /** The application to open when the wanted one is hidden. */
+    private int visibleFallback(){
+        int recent=recents.latest();
+        if(recent>=0&&AppVisibility.visible(service,recent))return recent;
+        for(int app=0;app<AppCatalog.IDS.length;app++)if(AppVisibility.visible(service,app))return app;
+        return 0;
     }
     private void completeAutomaticLaunch(){
         if(automaticLaunch){int boot=android.provider.Settings.Global.getInt(service.getContentResolver(),android.provider.Settings.Global.BOOT_COUNT,-1);
@@ -276,12 +315,64 @@ final class LauncherOverlay {
         handler.removeCallbacks(homeTransition);finishStartupPreview(false);hidePanel();hideNetworkCard();networkGate.cancel();beginStartupTransition(app);
         if(app==0||app==2)startNetworkWithBaseline(app);else launchNow(app);
     }
+    /**
+     * Starts the attached source at boot. The source is remembered by its
+     * port, so the same device is opened again after a restart.
+     */
+    private void launchSource(int port){
+        handler.removeCallbacks(homeTransition);finishStartupPreview(false);hidePanel();hideNetworkCard();networkGate.cancel();
+        clearStartupTransition();completeAutomaticLaunch();
+        // A source that was unplugged since the last session must not leave
+        // the television on a blank input.
+        if(!sourceAttached(port)){
+            android.util.Log.i("HomeOverlay","startup source port="+port+" not attached");
+            launch(StartupChoice.resolve("last","",recents.latest(),AppCatalog.IDS));
+            return;
+        }
+        if(!LauncherSupport.switchHdmi(service,port)){LauncherSupport.openSourcePopup(service);return;}
+        android.util.Log.i("HomeOverlay","startup source port="+port);
+        followArc(true);
+    }
+    /** True when a device is attached to the given port. */
+    private boolean sourceAttached(int port){
+        for(SignalInputs.Port candidate:SignalInputs.read(service)){
+            if(candidate.port==port)return candidate.connected;
+        }
+        return false;
+    }
+    /**
+     * Keeps the speaker on the channel that matches what the television is
+     * showing. The speaker lists the television's ARC input as "TV" and its
+     * own HDMI socket as "HDMI_n", so following the picture means picking
+     * the right one of the two. Runs off the main thread.
+     */
+    private void followArc(boolean externalSource){
+        android.content.SharedPreferences prefs=LauncherSupport.preferences(service);
+        String host=prefs.getString(BoseArc.KEY_HOST,"");
+        if(!BoseArc.configured(host))return;
+        final int port=prefs.getInt(BoseArc.KEY_PORT,8090);
+        final String arc=prefs.getString(BoseArc.KEY_ACCOUNT,BoseArc.DEFAULT_ACCOUNT);
+        final String hdmi=prefs.getString(BoseArc.KEY_HDMI_ACCOUNT,BoseArc.DEFAULT_HDMI_ACCOUNT);
+        final boolean external=externalSource;
+        usageWorker.execute(()->{
+            try{
+                String current=BoseArc.currentAccount(host,port);
+                String wanted=BoseArc.target(external,arc,hdmi);
+                if(wanted.equals(current))return;
+                boolean sent=BoseArc.select(host,port,wanted);
+                android.util.Log.i("HomeOverlay","arc follow external="+external+" from="+current+" to="+wanted+" sent="+sent);
+            }catch(RuntimeException ignored){ }
+        });
+    }
     private void launchNow(int app){hidePanel();completeAutomaticLaunch();
         if(closed||!screenOn){clearStartupTransition();return;}
         android.util.Log.i("HomeNetwork","launch app="+AppCatalog.IDS[app]);if(dialog!=null){dialog.dismiss();dialog=null;}
         long dispatched=System.currentTimeMillis();
         if(AppCatalog.launch(service,app)){
-            lastLaunchAt=dispatched;foreground=app;recents.record(app,lastLaunchAt);LauncherSupport.preferences(service).edit().putString("last_native_app",AppCatalog.IDS[app]).putString("last_video_app",AppCatalog.IDS[app]).apply();
+            lastLaunchAt=dispatched;sourceMode=false;foreground=app;recents.record(app,lastLaunchAt);LauncherSupport.preferences(service).edit().putString("last_native_app",AppCatalog.IDS[app]).putString("last_video_app",AppCatalog.IDS[app]).apply();
+            // An application is played through the speaker's ARC input, so
+            // the speaker is asked to follow the picture.
+            followArc(false);
             if(startupRequestApp==app){startupDispatchedAt=dispatched;if(startupBackdrop!=null)startupBackdrop.setStatus("正在打开");handler.removeCallbacks(startupExpiry);handler.postDelayed(startupExpiry,2000);}
             showChip();
         }else{clearStartupTransition();Toast.makeText(service,AppCatalog.NAMES[app]+" 暂时无法打开",Toast.LENGTH_SHORT).show();showPanel();}
@@ -297,6 +388,8 @@ final class LauncherOverlay {
     }
     private void showChip(){
         if(startupBackdrop!=null||startupPreview!=null||fadingStartup!=null){removeChip();return;}
+        // The TV's own source player owns the picture; no overlay belongs on it.
+        if(sourceMode){removeChip();return;}
         String mode=statusMode();
         if(closed||!screenOn||"off".equals(mode)||("smart".equals(mode)&&foreground==1)){removeChip();return;}
         if(clockChip==null){
@@ -318,19 +411,64 @@ final class LauncherOverlay {
     private void showPanel(){
         if(panel!=null||menuLoading)return;
         menuLoading=true;final int request=++panelRequest;
-        usageWorker.execute(()->{String[] runtime=AppRuntimeState.read(service);handler.post(()->{
+        usageWorker.execute(()->{String[] runtime=AppRuntimeState.read(service);
+            // The panel is opened on demand, so what is on screen is read now
+            // rather than taken from a usage event that may be stale.
+            final String live=CurrentApp.foreground(service);
+            final java.util.List<SignalInputs.Port> sources=SignalInputs.read(service);handler.post(()->{
             if(closed||request!=panelRequest)return;
             menuLoading=false;int current=-1,count=0;
             for(int app=0;app<runtime.length;app++)if("正在使用".equals(runtime[app])){current=app;count++;}
-            if(count==1&&foreground<0){foreground=current;lastLaunchAt=System.currentTimeMillis();recents.record(current,lastLaunchAt);LauncherSupport.preferences(service).edit().putString("last_native_app",AppCatalog.IDS[current]).putString("last_video_app",AppCatalog.IDS[current]).apply();showChip();}
-            buildPanel(runtime);
+            if(count==1&&foreground<0&&!sourceMode){foreground=current;lastLaunchAt=System.currentTimeMillis();recents.record(current,lastLaunchAt);LauncherSupport.preferences(service).edit().putString("last_native_app",AppCatalog.IDS[current]).putString("last_video_app",AppCatalog.IDS[current]).apply();showChip();}
+            applyLiveForeground(live);
+            knownSources=sources;
+            buildPanel(runtime,sources);
         });});
     }
-    private void buildPanel(String[] runtime){if(panel!=null)return;
+    /** Applies what is on screen right now, so the dock never offers the
+     * current app as a separate choice. */
+    private void applyLiveForeground(String live){
+        if(live==null||live.isEmpty())return;
+        int app=AppCatalog.forPackage(live);
+        if(app>=0){
+            if(sourceMode)followArc(false);
+            sourceMode=false;foreground=app;
+            recents.record(app,System.currentTimeMillis());
+            LauncherSupport.preferences(service).edit().putString("last_native_app",AppCatalog.IDS[app]).putString("last_video_app",AppCatalog.IDS[app]).apply();
+            return;
+        }
+        if(SignalSource.is(live)){
+            if(!sourceMode)followArc(true);
+            sourceMode=true;foreground=-1;
+        }
+    }
+    private void buildPanel(String[] runtime,java.util.List<SignalInputs.Port> sources){if(panel!=null)return;
         homeStates.clear();
-        int[] order=recents.order(foreground);
+        int[] order=recents.order(-1);
         java.util.List<DockPanel.App> apps=new java.util.ArrayList<>();
+        // An attached source sits with the applications, right behind the
+        // video entry, so the console is one press away.
+        java.util.List<DockPanel.App> sourceEntries=new java.util.ArrayList<>();
+        for(SignalInputs.Port port:sources){
+            // The source that is on screen is not offered again.
+            if(!port.connected||(sourceMode&&port.current))continue;
+            final int target=port.port;
+            sourceEntries.add(new DockPanel.App(port.title(),port.label,EntryIcons.source(service),()->{hidePanel();switchToSource(target);},DockColors.SOURCE_TILE));
+        }
+        // The applications that reach the row, in the order they are shown.
+        java.util.List<Integer> visibleApps=new java.util.ArrayList<>();
         for(int app:order){
+            // The application on screen is not offered again.
+            if(app==foreground)continue;
+            if(!AppVisibility.visible(service,app))continue;
+            visibleApps.add(app);
+        }
+        // The source belongs directly behind the video entry.
+        int[] visibleIds=new int[visibleApps.size()];
+        for(int i=0;i<visibleIds.length;i++)visibleIds[i]=visibleApps.get(i);
+        int insertAt=StartupChoice.sourceSlot(visibleIds,0);
+        int placed=0;
+        for(int app:visibleApps){
             android.graphics.drawable.Drawable icon;
             if(app==0)icon=service.getDrawable(R.drawable.youtube_icon);
             else if(app==1)icon=EntryIcons.bilibili(service);
@@ -340,16 +478,27 @@ final class LauncherOverlay {
             catch(Exception ignored){icon=service.getDrawable(R.drawable.phosphor_app_window_fill);}
             String caption=app==0?"TizenTube":"";
             apps.add(new DockPanel.App(app==0?"YouTube":AppCatalog.NAMES[app],caption,icon,()->{if(app==foreground)hidePanel();else launch(app);}));
+            placed++;
+            // The source follows the video entry, so the console stays next
+            // to it in the row.
+            if(placed==insertAt){
+                for(DockPanel.App source:sourceEntries)apps.add(source);
+            }
         }
-        int[] icons={R.drawable.phosphor_app_window_fill,R.drawable.phosphor_power_fill,R.drawable.phosphor_pulse_fill,R.drawable.phosphor_sliders_horizontal_fill,R.drawable.phosphor_plugs_connected_fill,R.drawable.phosphor_gear_six_fill,R.drawable.phosphor_house_line_fill,R.drawable.phosphor_terminal_window_fill,R.drawable.phosphor_app_window_fill};
-        String[] labels={"开机应用","开机启动","状态栏","FlClash","信号源","系统设置","智能家居","ADB 调试","启动过渡"};
-        int[] settingOrder={0,1,2,3,4,5,7,8};
-        TextView[] values=new TextView[9];View[] settings=new View[settingOrder.length];
+        if(placed<insertAt)for(DockPanel.App source:sourceEntries)apps.add(source);
+        int[] icons={R.drawable.phosphor_app_window_fill,R.drawable.phosphor_pulse_fill,R.drawable.phosphor_sliders_horizontal_fill,R.drawable.phosphor_plugs_connected_fill,R.drawable.phosphor_gear_six_fill,R.drawable.phosphor_terminal_window_fill,R.drawable.phosphor_app_window_fill,R.drawable.phosphor_app_window_fill};
+        String[] labels={"开机应用","状态栏","FlClash","信号源","系统设置","ADB 调试","启动过渡","Netflix 入口"};
+        // The source picker leads the panel; the rest keep their order. The
+        // takeover switch shares the boot target tile. The smart-home entry
+        // stays on the dock, so the panel is two rows deep.
+        int[] settingOrder={3,0,1,2,4,5,6,7};
+        TextView[] values=new TextView[8];View[] settings=new View[settingOrder.length];
         for(int i=0;i<settingOrder.length;i++){
             final int setting=settingOrder[i];TextView value=menuText("",11,0xffd7dde6);values[setting]=value;
             settings[i]=controlTile(labels[setting],icons[setting],value,()->settingAction(setting,values));
         }
-        values[6]=menuText("",11,0xffd7dde6);updateSettingValues(values);
+        values[4]=menuText("",11,0xffd7dde6);updateSettingValues(values);
+        values[3].setText(SignalInputs.summary(sources));
         java.util.List<View> home=new java.util.ArrayList<>();
         java.util.List<HomeControl> favorites=homeAssistant.favorites();
         // Reserve one cell for the complete existing hub; no configured control is lost.
@@ -394,25 +543,108 @@ final class LauncherOverlay {
     private TextView menuText(String value,int size,int color){TextView label=text(value,size,color);label.setSingleLine();label.setEllipsize(android.text.TextUtils.TruncateAt.END);label.setShadowLayer(dp(1),0,dp(1),0xe6000000);return label;}
     private void updateSettingValues(TextView[] values){
         android.content.SharedPreferences prefs=LauncherSupport.preferences(service);
-        String policy=prefs.getString("native_default_app","last");values[0].setText("last".equals(policy)?"跟随上次":AppCatalog.NAMES[AppCatalog.index(policy)]);
-        values[1].setText(prefs.getBoolean("native_boot_enabled",true)?"开启":"关闭");
-        String mode=statusMode();values[2].setText("on".equals(mode)?"常开":"off".equals(mode)?"常关":"智能");
-        values[3].setText("打开");values[4].setText("切换");values[5].setText("打开");
-        values[6].setText(homeAssistant.configured()?"设备与快捷项":"连接 HA");values[7].setText("直达开关页");
-        values[8].setText(StartupThemes.name(startupTheme()));
+        String policy=prefs.getString("native_default_app","last");
+        // The boot target and the takeover switch share one tile.
+        values[0].setText(startupPolicyLabel(StartupChoice.effective(policy,prefs.getBoolean("native_boot_enabled",true))));
+        String mode=statusMode();values[1].setText("on".equals(mode)?"常开":"off".equals(mode)?"常关":"智能");
+        values[2].setText(ProxyMode.label(ProxyMode.mode(service)));values[3].setText("切换");values[4].setText("打开");
+        values[5].setText("直达开关页");
+        values[6].setText(StartupThemes.name(startupTheme()));
+        values[7].setText(AppVisibility.label(service,2));
+    }
+    /** The boot target as it is shown in the settings tile. */
+    private String startupPolicyLabel(String policy){
+        if(StartupChoice.isOff(policy))return "不自动启动";
+        if("last".equals(policy))return "跟随上次";
+        if(StartupChoice.isSource(policy)){
+            int port=sourceMemoryPort();
+            for(SignalInputs.Port candidate:knownSources){
+                if(candidate.port==port)return candidate.title();
+            }
+            return "信号源";
+        }
+        int index=StartupChoice.index(policy,AppCatalog.IDS);
+        return index>=0?AppCatalog.NAMES[index]:"跟随上次";
     }
     private void settingAction(int setting,TextView[] values){
         cancelPendingLaunch();android.content.SharedPreferences prefs=LauncherSupport.preferences(service);
-        if(setting==0){String policy=prefs.getString("native_default_app","last");String next="last".equals(policy)?AppCatalog.IDS[0]:AppCatalog.index(policy)==AppCatalog.IDS.length-1?"last":AppCatalog.IDS[AppCatalog.index(policy)+1];prefs.edit().putString("native_default_app",next).apply();}
-        else if(setting==1)prefs.edit().putBoolean("native_boot_enabled",!prefs.getBoolean("native_boot_enabled",true)).apply();
-        else if(setting==2){String mode=statusMode();prefs.edit().putString("native_status_mode","smart".equals(mode)?"on":"on".equals(mode)?"off":"smart").apply();showChip();}
-        else if(setting==3){hidePanel();Intent in=service.getPackageManager().getLaunchIntentForPackage("com.follow.clash");if(in!=null)service.startActivity(in.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));}
-        else if(setting==4){hidePanel();LauncherSupport.openSourcePopup(service);}
-        else if(setting==5){hidePanel();if(!LauncherSupport.openSystemSettings(service))android.widget.Toast.makeText(service,"无法打开系统设置，请使用电视遥控器的设置键",android.widget.Toast.LENGTH_SHORT).show();}
-        else if(setting==6){hidePanel();smartHome.showHub();}
-        else if(setting==7){hidePanel();if(!LauncherSupport.openAdbSettings(service))android.widget.Toast.makeText(service,"无法打开 ADB 设置，请从系统设置进入",android.widget.Toast.LENGTH_SHORT).show();}
-        else if(setting==8)chooseStartupBackground();
+        if(setting==0){
+            // One tile carries both the boot target and the takeover switch.
+            android.content.SharedPreferences.Editor edit=prefs.edit();
+            String policy=prefs.getString("native_default_app","last");
+            String next;
+            if(!prefs.getBoolean("native_boot_enabled",true)&&!StartupChoice.isOff(policy)){
+                // An earlier version kept the switch on its own. The takeover
+                // was off, so it returns and the cycle starts over.
+                next=StartupChoice.LAST_ID;
+            }else{
+                next=StartupChoice.next(policy,visibleAppIds());
+            }
+            // The target that says so leaves the television on its own.
+            edit.putBoolean("native_boot_enabled",!StartupChoice.isOff(next));
+            edit.putString("native_default_app",next);
+            edit.apply();
+        }
+        else if(setting==1){String mode=statusMode();prefs.edit().putString("native_status_mode","smart".equals(mode)?"on":"on".equals(mode)?"off":"smart").apply();showChip();}
+        else if(setting==2){
+            // Cycle the proxy mode first; the automatic mode keeps the direct
+            // route into the FlClash app itself.
+            String mode=ProxyMode.mode(service);
+            if(ProxyMode.AUTO.equals(mode)){
+                hidePanel();Intent in=service.getPackageManager().getLaunchIntentForPackage("com.follow.clash");
+                if(in!=null)service.startActivity(in.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            }else{
+                String next=ProxyMode.next(mode);ProxyMode.set(service,next);
+                android.util.Log.i("HomeNetwork","proxy mode="+next);
+                if(ProxyMode.AUTO.equals(next)&&LauncherSupport.ensureProxyStarted(service))proxyGraceUntil=SystemClock.elapsedRealtime()+StartupTransitionPolicy.PROXY_RETURN_GRACE_MS;
+                showChip();
+            }
+        }
+        else if(setting==3){hidePanel();showSourcePicker();}
+        else if(setting==4){hidePanel();if(!LauncherSupport.openSystemSettings(service))android.widget.Toast.makeText(service,"无法打开系统设置，请使用电视遥控器的设置键",android.widget.Toast.LENGTH_SHORT).show();}
+        else if(setting==5){hidePanel();if(!LauncherSupport.openAdbSettings(service))android.widget.Toast.makeText(service,"无法打开 ADB 设置，请从系统设置进入",android.widget.Toast.LENGTH_SHORT).show();}
+        else if(setting==6)chooseStartupBackground();
+        else if(setting==7){AppVisibility.setVisible(service,2,!AppVisibility.visible(service,2));if(panel!=null)hidePanel();showPanel();return;}
         if(panel!=null)updateSettingValues(values);
+    }
+    /**
+     * Lists the attached sources and switches to the chosen one. Ports
+     * without a device are shown as unavailable instead of being offered.
+     */
+    private void showSourcePicker(){
+        final java.util.List<SignalInputs.Port> ports=SignalInputs.read(service);
+        if(ports.isEmpty()){
+            Toast.makeText(service,"无法读取信号源状态",Toast.LENGTH_SHORT).show();
+            LauncherSupport.openSourcePopup(service);
+            return;
+        }
+        final String[] labels=new String[ports.size()];
+        for(int i=0;i<ports.size();i++){
+            SignalInputs.Port port=ports.get(i);
+            labels[i]=port.title()+(port.current?"    当前":port.connected?"    已接入":"    未接入");
+        }
+        AlertDialog picker=new AlertDialog.Builder(service).setTitle("信号源")
+            .setItems(labels,(selected,index)->{
+                SignalInputs.Port port=ports.get(index);
+                if(!port.connected){
+                    Toast.makeText(service,port.label+" 未接入设备",Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                switchToSource(port.port);
+            }).setNegativeButton("关闭",null).create();
+        showDialog(picker);
+    }
+    /** Switches the picture to the given port and lets the speaker follow. */
+    private void switchToSource(int port){
+        if(!LauncherSupport.switchHdmi(service,port)){
+            LauncherSupport.openSourcePopup(service);
+            return;
+        }
+        // The source is remembered so the same device can be opened at boot.
+        LauncherSupport.preferences(service).edit().putInt("last_source_port",port)
+                .putString("last_video_app",StartupChoice.SOURCE_ID).apply();
+        android.util.Log.i("HomeOverlay","source switched port="+port);
+        followArc(true);
     }
     private void updateHomeStates(){for(HomeControl control:homeAssistant.controls()){TextView label=homeStates.get(control.id);if(label!=null)label.setText(SmartHomeUi.status(control,homeAssistant.snapshot()));}}
     private void hidePanel(){panelRequest++;menuLoading=false;openSettingsRow=false;handler.removeCallbacks(dismiss);handler.removeCallbacks(homeRefresh);homeStates.clear();if(panel!=null){try{wm.removeView(panel);}catch(RuntimeException ignored){}panel=null;settingsFirst=null;}}

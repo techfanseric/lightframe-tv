@@ -1,6 +1,6 @@
 # 轻幕 · Lightframe TV
 
-[English](README.en.md) · [下载 v0.2.2](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.2.2) · [安装指南](docs/install.md) · [回退与排错](docs/troubleshooting.md)
+[English](README.en.md) · [下载 v0.2.3](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.2.3) · [安装指南](docs/install.md) · [回退与排错](docs/troubleshooting.md)
 
 **电视围绕正在播放的应用，首页键只唤出轻量覆盖菜单。**
 
@@ -13,6 +13,16 @@
 | 设置：紧凑四列 | 智能家居：聚焦时展开 |
 | --- | --- |
 | ![设置面板](docs/images/dock-settings.png) | ![智能家居面板](docs/images/dock-home.png) |
+
+## v0.2.3 · 信号源入口与自动跟随
+
+覆盖菜单现在认识电视的 HDMI 输入。接入的设备在应用栏里各占一个入口，排在 YouTube 入口之后；正在播放的那个输入源不会再被列出。设置 → **信号源** 列出各端口的接入状态并可切换。信号源也可以作为开机目标，拔掉的设备不会把电视留在空白画面。
+
+声音跟随画面：外部设备时 Bose 音响走它自己的 HDMI 输入，回到电视自带应用时切回电视的 ARC 通道。
+
+代理模式新增直连与关闭。直连适合局域网路由已经做代理的场合：状态条显示设备总流量而不是代理流量，打开应用前只检查网络是否通，不再要求本机 FlClash 在前台。Netflix 入口默认隐藏，可在设置里打开。
+
+「开机应用」与「开机启动」合并为一个磁贴，循环里多出「不自动启动」，设置面板回到两行。详见[发布说明](docs/release-notes-v0.2.3.md)。
 
 ## v0.2.2 · 流光启动过渡
 
@@ -43,7 +53,7 @@ Netflix 的 DRM、设备认证和 Google 服务兼容性需要单独验证。附
 
 ## 最短安装路径
 
-1. 从 Release 下载 `Lightframe-v0.2.2-setup.zip` 并解压。需要电脑上的 Python 3.9+ 与 Android Platform Tools（`adb`）。
+1. 从 Release 下载 `Lightframe-v0.2.3-setup.zip` 并解压。需要电脑上的 Python 3.9+ 与 Android Platform Tools（`adb`）。
 2. 电视打开 ADB，与电脑同一可信局域网；较新系统先用 `adb pair IP:配对端口`，再连接实际调试端口。
 3. 在解压目录执行检测和安装：
 

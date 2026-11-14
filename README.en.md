@@ -1,6 +1,6 @@
 # Lightframe TV
 
-[中文](README.md) · [v0.2.2 downloads](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.2.2)
+[中文](README.md) · [v0.2.3 downloads](https://github.com/techfanseric/lightframe-tv/releases/tag/v0.2.3)
 
 A transparent Android TV HOME relay and native overlay. Press Home to switch applications above the current video; startup can follow the last application. Content autoplay depends on the video client.
 
@@ -13,6 +13,18 @@ The images are native emulator renders with an illustrative background and ficti
 | ![Settings](docs/images/dock-settings.png) | ![Home](docs/images/dock-home.png) |
 
 Version 0.2 adds small themed cards, 12% focus scaling, a bottom gradient, adaptive compact panels, Phosphor Fill content icons, a transparent clock, and an ADB settings-page shortcut. Expanding a panel does not move the dock.
+
+## v0.2.3: signal source entries and automatic follow
+
+The overlay now reads the television's HDMI inputs. Each attached device gets its own entry in the application row, right behind the YouTube entry, and the input currently on screen is not offered again. Settings offers a source picker that shows which ports are attached. An attached source can also be the boot target, and a device that was unplugged does not leave the television on a blank input.
+
+Sound follows the picture: an external device sends the speaker to its own HDMI input, and returning to the television's own applications sends it back to the television's ARC channel. These are two different inputs on the speaker.
+
+In direct mode the status strip shows the device's total traffic instead of proxy traffic, and the network-gate only probes the destination site rather than requiring a local VPN. Each application checks that the network answers; it no longer checks whether FlClash is in front. The Netflix entry is hidden by default and can be switched back on in the settings.
+
+The boot target and the takeover switch share one tile, which includes an explicit "do not start on boot" option, and the settings panel is two rows deep again.
+
+Version 0.2.3 keeps the `.dock` package names and the shared signing key. This iteration did not repeat a physical cold reboot; the boot memory and cold-start path were reviewed in code but not re-verified on the device.
 
 ## v0.2.2: quiet startup loading
 
@@ -30,7 +42,7 @@ YouTube/Netflix preflight currently requires configured FlClash VPN, its authent
 
 ## Install
 
-Extract `Lightframe-v0.2.2-setup.zip`, install Python 3.9+ and Android Platform Tools, enable ADB on the TV, then:
+Extract `Lightframe-v0.2.3-setup.zip`, install Python 3.9+ and Android Platform Tools, enable ADB on the TV, then:
 
 ```sh
 adb connect TV_IP:5555

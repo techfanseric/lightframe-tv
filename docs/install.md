@@ -1,8 +1,8 @@
-# 安装与回退（v0.2.2）
+# 安装与回退（v0.2.3）
 
 ## 1. 下载与准备
 
-Release 提供 `Lightframe-v0.2.2-setup.zip`（两只轻幕 APK、向导、指南、校验），以及 `Lightframe-v0.2.2-companions.zip`（TizenTube ARM32/64、FlClash ARM32/64、MyTV、可选播放守护）。配套包解压到 setup 同一目录，保留其 SHA256SUMS 文件。单独 APK 也同时提供。`third-party-sources.zip` 保存FlClash/MyTV对应源码快照、全部许可证及TizenTube源码下载地址。
+Release 提供 `Lightframe-v0.2.3-setup.zip`（两只轻幕 APK、向导、指南、校验），以及 `Lightframe-v0.2.3-companions.zip`（TizenTube ARM32/64、FlClash ARM32/64、MyTV、可选播放守护）。配套包解压到 setup 同一目录，保留其 SHA256SUMS 文件。单独 APK 也同时提供。`third-party-sources.zip` 保存FlClash/MyTV对应源码快照、全部许可证及TizenTube源码下载地址。
 
 电脑安装 Python 3.9+ 和 [官方 Android Platform Tools](https://developer.android.com/tools/releases/platform-tools)，让 `adb` 在 PATH 中，或设置 ADB 环境变量指向它。Windows PowerShell 使用 `py -3`，macOS/Linux 使用 `python3`。不要在已连接多台设备时省略目标序列号。
 
@@ -64,7 +64,7 @@ python3 scripts/setup.py rollback --serial TV_IP:5555 --bundle .
 
 升级新版可重复 install，沿用签名保留数据。只有安装成功且配置验收后再激活；不需要每次重复第三方客户端安装。
 
-## 从 v0.2.1 升级到 v0.2.2
+## 从 v0.2.1 升级到 v0.2.3
 
 使用同一发布签名，`.dock` 包名不变。下载新版 setup，运行同一个 `install` 命令即可覆盖升级两只轻幕 APK；原配置与已登录视频应用保留。已设置默认轻幕者无需再次 activate，也无需重新导入 HA 或 Clash 凭据。
 
@@ -77,5 +77,13 @@ adb -s TV_IP:5555 install -r PlaybackGuardian-2.11.apk
 这是可选守护的升级，不是所有电视的安装前置。签名冲突就停止并保留旧版，不卸载、不清数据。升级后确认原无障碍授权仍开启。
 
 设置 → 启动过渡：流光（默认）、静态、关闭。关闭仅关闭视觉过渡，网络检查仍然运行。详见[启动过渡](startup-loading.md)。
+
+设置 → 开机应用：跟随上次、某个应用、信号源，或不自动启动。这一项同时承担开机接管开关，一轮循环里选到“不自动启动”即开机不自动打开内容。
+
+设置 → 信号源：列出电视的 HDMI 端口，标出哪个已接入、哪个正在显示。接入的设备也会作为应用栏里的一个入口。
+
+设置 → FlClash：自动、直连、关闭。局域网路由已经做代理的场合选直连，此时只探测目标站点，不要求本机 VPN；关闭则完全不探测直接打开。
+
+设置 → Netflix 入口：默认隐藏，需要时打开。
 
 回退到旧默认首页仍使用已保存的 `rollback` 记录。它不等于降低当前 APK 版本。若需回退同包名代码，Android 可能拒绝降级；维护者应使用原签名、旧源码和递增 versionCode 构建回退包，不能用卸载代替升级。

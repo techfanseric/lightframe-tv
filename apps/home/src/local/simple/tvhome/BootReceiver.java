@@ -10,9 +10,12 @@ public final class BootReceiver extends BroadcastReceiver {
         if (intent == null || !Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) return;
         if (!LauncherSupport.isDefaultHome(context)) return;
         try {
-            LauncherSupport.preferences(context).edit()
-                    .remove(LauncherSupport.MANUAL_PROXY_OFF)
-                    .remove(LauncherSupport.ALLOW_STOCK_UNTIL_MS).apply();
+            if (ProxyMode.startsFlClash(context)) {
+                // A fresh automatic session clears any earlier manual opt-out.
+                LauncherSupport.preferences(context).edit()
+                        .remove(LauncherSupport.MANUAL_PROXY_OFF)
+                        .remove(LauncherSupport.ALLOW_STOCK_UNTIL_MS).apply();
+            }
             LauncherSupport.ensureProxyStarted(context);
             context.startForegroundService(new Intent("BOOT")
                 .setComponent(new android.content.ComponentName("local.simple.tvoverlay","local.simple.tvoverlay.OverlayRuntimeService"))

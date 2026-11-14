@@ -22,7 +22,7 @@ final class StatusStripView extends View {
     private final long[] upload = new long[HISTORY], download = new long[HISTORY];
     private final float density;
     private int count;
-    private boolean available;
+    private boolean available, direct;
     private String node = "读取中", delay = "", downRate = "—", upRate = "—";
     private final Drawable networkIcon, downIcon, upIcon;
 
@@ -53,6 +53,7 @@ final class StatusStripView extends View {
 
     void update(DashboardClient.Snapshot snapshot) {
         available = snapshot.available;
+        direct = ProxyMode.DIRECT.equals(snapshot.mode);
         node = available ? conciseNode(snapshot.node) : "暂不可用";
         delay = available && snapshot.delayMs != null ? " · " + snapshot.delayMs + "ms" : "";
         downRate = available ? rate(snapshot.down) : "—";
@@ -93,12 +94,18 @@ final class StatusStripView extends View {
         super.onDraw(canvas);
         float gap = dp(9), graphWidth = dp(62), iconWidth = dp(13), arrow = dp(9), smallGap = dp(3), metricGap = dp(8);
         float baseline = (getHeight() - text.ascent() - text.descent()) / 2;
-        String prefix = "Clash · ";
         float rateWidth = arrow * 2 + smallGap * 2 + metricGap + text.measureText(downRate) + text.measureText(upRate);
-        float fixed = text.measureText(prefix + delay) + rateWidth + graphWidth + gap * 2 + iconWidth;
-        String visibleNode = ellipsize(node, Math.max(dp(30), getWidth() - fixed - dp(3)));
-        String label = prefix + visibleNode + delay;
-        float contentWidth = iconWidth + text.measureText(label) + rateWidth + graphWidth + gap * 2;
+        String label;
+        float contentWidth;
+        if (direct) {
+            label = ProxyMode.statusLabel(true, node, delay);
+            contentWidth = iconWidth + rateWidth + graphWidth + gap * 2;
+        } else {
+            float fixed = text.measureText(ProxyMode.statusLabel(false, node, delay)) + rateWidth + graphWidth + gap * 2 + iconWidth;
+            String visibleNode = ellipsize(node, Math.max(dp(30), getWidth() - fixed - dp(3)));
+            label = ProxyMode.statusLabel(false, visibleNode, delay);
+            contentWidth = iconWidth + text.measureText(label) + rateWidth + graphWidth + gap * 2;
+        }
         float x = Math.max(dp(1), getWidth() - contentWidth - dp(1));
 
         double scale = 1;
@@ -114,8 +121,10 @@ final class StatusStripView extends View {
         networkIcon.setAlpha(available ? 255 : 120);
         drawIcon(canvas, networkIcon, x, dp(10));
         x += iconWidth;
-        drawText(canvas, label, x, baseline);
-        x += text.measureText(label) + gap;
+        if (!label.isEmpty()) {
+            drawText(canvas, label, x, baseline);
+            x += text.measureText(label) + gap;
+        }
         drawIcon(canvas, downIcon, x, arrow); x += arrow + smallGap;
         drawText(canvas, downRate, x, baseline); x += text.measureText(downRate) + metricGap;
         drawIcon(canvas, upIcon, x, arrow); x += arrow + smallGap;
